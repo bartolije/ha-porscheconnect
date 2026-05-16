@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -35,6 +36,7 @@ BUTTON_TYPES: tuple[PorscheButtonEntityDescription, ...] = (
         key="get_current_overview",
         translation_key="get_current_overview",
         remote_function=lambda v: v.get_current_overview(),
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PorscheButtonEntityDescription(
         key="flash_indicators",

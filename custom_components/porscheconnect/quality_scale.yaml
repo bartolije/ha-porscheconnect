@@ -119,7 +119,14 @@ rules:
       Every platform registers a coordinator listener that creates
       entities for VINs appearing after the initial refresh — newly
       paired vehicles show up without restarting Home Assistant.
-  entity-category: todo
+  entity-category:
+    status: done
+    comment: |
+      Diagnostic category applied to non-primary entities: remote_access /
+      privacy_mode / tire_pressure_status binary sensors, and the
+      ``get_current_overview`` refresh button. Primary state (battery,
+      doors, parking, range, mileage, lock, location, images, switches)
+      keeps the default user-facing category.
   entity-device-class: done
   entity-disabled-by-default: todo
   entity-translations: done
