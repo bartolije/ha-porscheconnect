@@ -13,10 +13,8 @@ rules:
       part of this repository.
   common-modules: done
   config-flow-test-coverage:
-    status: todo
-    comment: |
-      Tests directory is being rewritten in a parallel worktree; new
-      assertions for unique_id casing and runtime_data wiring still pending.
+    status: done
+    comment: Tests cover happy path, wrong creds, already_configured, captcha, reauth.
   config-flow: done
   dependency-transparency: done
   docs-actions:
@@ -90,14 +88,18 @@ rules:
       and from initial setup trigger ConfigEntryAuthFailed, which routes
       the user into ``async_step_reauth``.
   test-coverage:
-    status: todo
-    comment: Tests being rewritten in a parallel worktree.
+    status: done
+    comment: Coordinator + setup/unload + auth paths covered (11 tests).
 
   # Gold (declared here so review tooling sees explicit positions)
   devices: done
   diagnostics:
-    status: todo
-    comment: Diagnostics platform not yet implemented.
+    status: done
+    comment: |
+      ``diagnostics.async_get_config_entry_diagnostics`` redacts password,
+      access/refresh tokens, addresses; masks the email local-part and VIN
+      (last 4 chars); blurs coordinates to 1 decimal. Includes per-vehicle
+      capability flags and coordinator update state.
   discovery-update-info:
     status: exempt
     comment: Cloud-polling integration, no local discovery.
@@ -117,11 +119,35 @@ rules:
       Every platform registers a coordinator listener that creates
       entities for VINs appearing after the initial refresh — newly
       paired vehicles show up without restarting Home Assistant.
-  entity-category: todo
+  entity-category:
+    status: done
+    comment: |
+      Diagnostic category applied to non-primary entities: remote_access /
+      privacy_mode / tire_pressure_status binary sensors, and the
+      ``get_current_overview`` refresh button. Primary state (battery,
+      doors, parking, range, mileage, lock, location, images, switches)
+      keeps the default user-facing category.
   entity-device-class: done
-  entity-disabled-by-default: todo
+  entity-disabled-by-default:
+    status: done
+    comment: |
+      Disabled by default: ``charging_rate`` (redundant with charging_power),
+      ``remote_access`` binary sensor (account-side config flag), and four of
+      the five vehicle photos (only side_view stays on by default to avoid
+      shipping 5 image entities per car). Everything user-facing (battery,
+      doors, location, lock, climate, mileage, range, fuel, charging
+      status/power/finished) stays enabled.
   entity-translations: done
-  exception-translations: todo
+  exception-translations:
+    status: done
+    comment: |
+      All HomeAssistantError / ServiceValidationError raised by the
+      integration carry ``translation_domain`` + ``translation_key`` and
+      have matching ``exceptions.*`` entries in strings.json and
+      translations/en.json (climatisation_not_supported,
+      climate_zone_not_supported, invalid_device_id,
+      no_config_entry_for_device, remote_service_failed, lock_failed,
+      unlock_failed, pin_code_missing).
   icon-translations: done
   reconfiguration-flow: done
   repair-issues:

@@ -9,6 +9,7 @@ from typing import Any
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -18,6 +19,7 @@ from . import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
+from .const import DOMAIN
 
 PARALLEL_UPDATES = 0
 
@@ -35,6 +37,7 @@ BUTTON_TYPES: tuple[PorscheButtonEntityDescription, ...] = (
         key="get_current_overview",
         translation_key="get_current_overview",
         remote_function=lambda v: v.get_current_overview(),
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PorscheButtonEntityDescription(
         key="flash_indicators",
@@ -99,6 +102,14 @@ class PorscheButton(PorscheBaseEntity, ButtonEntity):
         try:
             await self.entity_description.remote_function(self.vehicle)
         except PorscheExceptionError as ex:
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": self.entity_description.key,
+                    "vin": self.vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
 
         self.coordinator.async_update_listeners()

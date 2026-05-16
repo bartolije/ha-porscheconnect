@@ -12,6 +12,7 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntityDescription,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -39,12 +40,17 @@ class PorscheBinarySensorEntityDescription(BinarySensorEntityDescription):
 
 SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
     PorscheBinarySensorEntityDescription(
+        # Reflects an account-side configuration flag rather than live
+        # vehicle state — useful when debugging "why are my services not
+        # working", but noisy on a default dashboard.
         name="Remote access",
         key="remote_access",
         translation_key="remote_access",
         measurement_node="REMOTE_ACCESS_AUTHORIZATION",
         measurement_leaf="isEnabled",
         device_class=None,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
     PorscheBinarySensorEntityDescription(
         name="Privacy mode",
@@ -53,6 +59,7 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         measurement_node="GLOBAL_PRIVACY_MODE",
         measurement_leaf="isEnabled",
         device_class=None,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PorscheBinarySensorEntityDescription(
         name="Parking brake",
@@ -86,6 +93,7 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         attr_fn=lambda v: v.tire_pressures,
         is_available=lambda v: v.has_tire_pressure_monitoring,
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
     ),
 ]
 

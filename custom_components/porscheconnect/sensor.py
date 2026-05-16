@@ -65,6 +65,9 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         is_available=lambda v: v.has_electric_drivetrain,
     ),
     PorscheSensorEntityDescription(
+        # The kph charging rate duplicates the more useful kW power reading
+        # below — leave it off by default so users opt-in if they actually
+        # want both views.
         key="charging_rate",
         translation_key="charging_rate",
         measurement_node="CHARGING_RATE",
@@ -73,6 +76,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         is_available=lambda v: v.has_electric_drivetrain,
+        entity_registry_enabled_default=False,
     ),
     PorscheSensorEntityDescription(
         key="charging_finished",

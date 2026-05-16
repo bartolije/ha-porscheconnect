@@ -182,7 +182,15 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 **zone_kwargs,
             )
         except PorscheExceptionError as ex:
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": SERVICE_CLIMATISATION_START,
+                    "vin": vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
 
     if not hass.services.has_service(DOMAIN, SERVICE_CLIMATISATION_START):
         hass.services.async_register(
