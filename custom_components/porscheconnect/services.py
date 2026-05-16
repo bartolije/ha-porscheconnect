@@ -25,6 +25,58 @@ ATTR_FRONT_RIGHT = "front_right"
 ATTR_REAR_LEFT = "rear_left"
 ATTR_REAR_RIGHT = "rear_right"
 
+# Mapping from service-call attribute (snake_case) to API zone key (camelCase),
+# as exposed in `CLIMATIZER_STATE.climateZonesEnabled`. The set of keys actually
+# present in that payload is per-vehicle: zones the car does not physically have
+# are simply missing from the payload (not set to false). See issue #292.
+_ZONE_ATTR_TO_API_KEY: dict[str, str] = {
+    ATTR_FRONT_LEFT: "frontLeft",
+    ATTR_FRONT_RIGHT: "frontRight",
+    ATTR_REAR_LEFT: "rearLeft",
+    ATTR_REAR_RIGHT: "rearRight",
+}
+
+
+def _resolve_climate_zone_kwargs(
+    vehicle: PorscheVehicle,
+    service_data: Mapping,
+) -> dict[str, bool]:
+    """Filter requested seat-heating zones against the vehicle's capabilities.
+
+    Returns the kwargs dict to pass to `climatise_on`. Raises
+    `ServiceValidationError` if the caller requested a zone the vehicle does
+    not physically have (issue #292).
+    """
+    supported_zones: set[str] = set(
+        vehicle.data.get("CLIMATIZER_STATE", {})
+        .get("climateZonesEnabled", {})
+        .keys()
+    )
+
+    zone_kwargs: dict[str, bool] = {}
+    for attr_name, api_key in _ZONE_ATTR_TO_API_KEY.items():
+        requested = service_data.get(attr_name)
+        if requested is None:
+            continue
+        if api_key not in supported_zones:
+            # Caller asked to control a zone the car doesn't have. Fail loudly
+            # so the user can fix their automation rather than silently
+            # dropping the parameter — but only when they asked to enable it.
+            if requested:
+                raise ServiceValidationError(
+                    translation_domain=DOMAIN,
+                    translation_key="climate_zone_not_supported",
+                    translation_placeholders={
+                        "zone": attr_name,
+                        "vehicle": vehicle.vin,
+                    },
+                )
+            # `False` on an unsupported zone is harmless — just skip it.
+            continue
+        zone_kwargs[attr_name] = requested
+    return zone_kwargs
+
+
 SERVICE_VEHICLE_SCHEMA = vol.Schema(
     {
         vol.Required("vehicle"): cv.string,
@@ -101,29 +153,33 @@ def async_setup_services(hass: HomeAssistant) -> None:
     async def climatisation_start(service_call: ServiceCall) -> None:
         """Start climatisation."""
         temperature: float | None = service_call.data.get(ATTR_TEMPERATURE)
-        front_left: bool = service_call.data.get(ATTR_FRONT_LEFT) or False
-        front_right: bool = service_call.data.get(ATTR_FRONT_RIGHT) or False
-        rear_left: bool = service_call.data.get(ATTR_REAR_LEFT) or False
-        rear_right: bool = service_call.data.get(ATTR_REAR_RIGHT) or False
+        vehicle = _resolve_vehicle(hass, service_call.data)
+
+        if not vehicle.has_remote_climatisation:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="climatisation_not_supported",
+                translation_placeholders={"vehicle": vehicle.vin},
+            )
+
+        # The Porsche API only includes zones the car physically supports
+        # in `CLIMATIZER_STATE.climateZonesEnabled`. A missing key means
+        # "not available", not "false" — so derive the supported set from
+        # the actual payload instead of hardcoding all four zones (#292).
+        zone_kwargs = _resolve_climate_zone_kwargs(vehicle, service_call.data)
 
         LOGGER.debug(
-            "Starting climatisation: %s, %s, %s, %s, %s",
+            "Starting climatisation on %s: temperature=%s, zones=%s",
+            vehicle.vin,
             temperature,
-            front_left,
-            front_right,
-            rear_left,
-            rear_right,
+            zone_kwargs,
         )
-        vehicle = _resolve_vehicle(hass, service_call.data)
         try:
             await vehicle.remote_services.climatise_on(
                 target_temperature=293.15
                 if temperature is None
                 else temperature + 273.15,
-                front_left=front_left,
-                front_right=front_right,
-                rear_left=rear_left,
-                rear_right=rear_right,
+                **zone_kwargs,
             )
         except PorscheExceptionError as ex:
             raise HomeAssistantError(ex) from ex
