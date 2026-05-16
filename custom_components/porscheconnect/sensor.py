@@ -16,9 +16,11 @@ from homeassistant.const import (
     PERCENTAGE,
     UnitOfLength,
     UnitOfPower,
+    UnitOfPressure,
     UnitOfSpeed,
 )
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -39,7 +41,32 @@ class PorscheSensorEntityDescription(SensorEntityDescription):
 
     measurement_node: str | None = None
     measurement_leaf: str | None = None
+    # Custom extractor for values that don't live at a fixed 2-level path
+    # (e.g. per-tire pressure deltas under TIRE_PRESSURE.<tire>.<field>).
+    # When present, takes priority over measurement_node / _leaf.
+    value_fn: Callable[[PorscheVehicle], float | int | str | None] | None = None
     is_available: Callable[[PorscheVehicle], bool] = lambda v: v.has_porsche_connect
+
+
+def _tire_delta(tire: str) -> Callable[[PorscheVehicle], float | None]:
+    """Return a `value_fn` that pulls `TIRE_PRESSURE.<tire>.differenceBar`.
+
+    Used for the four per-tire pressure deviation sensors. The Porsche
+    API exposes a per-tire `differenceBar` (positive = over-pressure,
+    negative = under-pressure) relative to the OEM target — same source
+    the existing `tire_pressure_status` binary sensor reduces to a
+    single PROBLEM bool. A captured tire payload looks like:
+
+        {"frontLeftTire": {"differenceBar": 0.05}, ...}
+    """
+    def _extract(v: PorscheVehicle) -> float | None:
+        tp = v.tire_pressures or {}
+        leaf = tp.get(tire)
+        if not isinstance(leaf, dict):
+            return None
+        delta = leaf.get("differenceBar")
+        return float(delta) if isinstance(delta, (int, float)) else None
+    return _extract
 
 
 SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
@@ -155,6 +182,57 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         suggested_display_precision=0,
         is_available=lambda v: v.has_ice_drivetrain,
     ),
+    # Per-tire pressure deviation (signed bar, +/- vs OEM target).
+    # Diagnostic + disabled by default so the default dashboard keeps a
+    # single tire_pressure_status flag; enthusiasts can flip them on.
+    PorscheSensorEntityDescription(
+        key="tire_pressure_front_left",
+        translation_key="tire_pressure_front_left",
+        value_fn=_tire_delta("frontLeftTire"),
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.BAR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        is_available=lambda v: v.has_tire_pressure_monitoring,
+    ),
+    PorscheSensorEntityDescription(
+        key="tire_pressure_front_right",
+        translation_key="tire_pressure_front_right",
+        value_fn=_tire_delta("frontRightTire"),
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.BAR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        is_available=lambda v: v.has_tire_pressure_monitoring,
+    ),
+    PorscheSensorEntityDescription(
+        key="tire_pressure_rear_left",
+        translation_key="tire_pressure_rear_left",
+        value_fn=_tire_delta("rearLeftTire"),
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.BAR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        is_available=lambda v: v.has_tire_pressure_monitoring,
+    ),
+    PorscheSensorEntityDescription(
+        key="tire_pressure_rear_right",
+        translation_key="tire_pressure_rear_right",
+        value_fn=_tire_delta("rearRightTire"),
+        device_class=SensorDeviceClass.PRESSURE,
+        native_unit_of_measurement=UnitOfPressure.BAR,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=2,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        is_available=lambda v: v.has_tire_pressure_monitoring,
+    ),
 ]
 
 
@@ -207,11 +285,14 @@ class PorscheSensor(PorscheBaseEntity, SensorEntity):
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        state = self.coordinator.get_vehicle_data_leaf(
-            self.vehicle,
-            self.entity_description.measurement_node,
-            self.entity_description.measurement_leaf,
-        )
+        if self.entity_description.value_fn is not None:
+            state = self.entity_description.value_fn(self.vehicle)
+        else:
+            state = self.coordinator.get_vehicle_data_leaf(
+                self.vehicle,
+                self.entity_description.measurement_node,
+                self.entity_description.measurement_leaf,
+            )
 
         if type(state) is str:
             state = state.lower()

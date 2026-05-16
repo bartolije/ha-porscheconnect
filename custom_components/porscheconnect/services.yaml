@@ -39,3 +39,11 @@ climatisation_start:
       default: false
       selector:
         boolean:
+
+climatisation_stop:
+  fields:
+    vehicle:
+      required: true
+      selector:
+        device:
+          integration: porscheconnect

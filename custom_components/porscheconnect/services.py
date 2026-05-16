@@ -94,8 +94,9 @@ SERVICE_CLIMATISATION_START_SCHEMA = SERVICE_VEHICLE_SCHEMA.extend(
 )
 
 SERVICE_CLIMATISATION_START = "climatisation_start"
+SERVICE_CLIMATISATION_STOP = "climatisation_stop"
 
-SERVICES = (SERVICE_CLIMATISATION_START,)
+SERVICES = (SERVICE_CLIMATISATION_START, SERVICE_CLIMATISATION_STOP)
 
 
 def _resolve_vehicle(
@@ -192,12 +193,50 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 },
             ) from ex
 
+    async def climatisation_stop(service_call: ServiceCall) -> None:
+        """Stop climatisation. Mirror of climatisation_start.
+
+        The Porsche app only offers a single "Stop climatisation" button —
+        no zones, no temperature. So this service takes only the vehicle
+        device id.
+        """
+        vehicle = _resolve_vehicle(hass, service_call.data)
+
+        if not vehicle.has_remote_climatisation:
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="climatisation_not_supported",
+                translation_placeholders={"vehicle": vehicle.vin},
+            )
+
+        LOGGER.debug("Stopping climatisation on %s", vehicle.vin)
+        try:
+            await vehicle.remote_services.climatise_off()
+        except PorscheExceptionError as ex:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": SERVICE_CLIMATISATION_STOP,
+                    "vin": vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
+
     if not hass.services.has_service(DOMAIN, SERVICE_CLIMATISATION_START):
         hass.services.async_register(
             DOMAIN,
             SERVICE_CLIMATISATION_START,
             climatisation_start,
             schema=SERVICE_CLIMATISATION_START_SCHEMA,
+        )
+
+    if not hass.services.has_service(DOMAIN, SERVICE_CLIMATISATION_STOP):
+        hass.services.async_register(
+            DOMAIN,
+            SERVICE_CLIMATISATION_STOP,
+            climatisation_stop,
+            schema=SERVICE_VEHICLE_SCHEMA,
         )
 
 

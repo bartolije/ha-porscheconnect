@@ -98,6 +98,90 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
 ]
 
 
+# Per-component OPEN_STATE_* binary sensors (doors, lids, windows, sunroofs,
+# charge flaps, convertible top, spoiler, service flap). The Porsche API
+# only includes the `OPEN_STATE_*` key for components the vehicle physically
+# has — so we gate each sensor on the data containing its key. The aggregated
+# `doors_and_lids` sensor above is kept enabled-by-default; these per-part
+# sensors are enabled-by-default for primary parts (doors, lids, windows,
+# sunroofs, charge flaps) and disabled for cosmetic ones (spoiler) /
+# maintenance-only ones (service flap) — see _OPEN_STATE_CONFIG below.
+@dataclass(frozen=True)
+class _OpenStateConfig:
+    """Display config for a single OPEN_STATE_* binary sensor."""
+
+    api_suffix: str  # the part after "OPEN_STATE_"
+    key: str  # HA entity key
+    device_class: BinarySensorDeviceClass = BinarySensorDeviceClass.OPENING
+    enabled_by_default: bool = True
+    entity_category: EntityCategory | None = None
+
+
+_DOOR = BinarySensorDeviceClass.DOOR
+_WINDOW = BinarySensorDeviceClass.WINDOW
+_DIAG = EntityCategory.DIAGNOSTIC
+
+_OPEN_STATE_CONFIG: list[_OpenStateConfig] = [
+    # Doors — primary user-facing state.
+    _OpenStateConfig("DOOR_FRONT_LEFT", "door_front_left", _DOOR),
+    _OpenStateConfig("DOOR_FRONT_RIGHT", "door_front_right", _DOOR),
+    _OpenStateConfig("DOOR_REAR_LEFT", "door_rear_left", _DOOR),
+    _OpenStateConfig("DOOR_REAR_RIGHT", "door_rear_right", _DOOR),
+    # Lids: front (frunk) + rear (trunk/boot).
+    _OpenStateConfig("LID_FRONT", "lid_front"),
+    _OpenStateConfig("LID_REAR", "lid_rear"),
+    # Windows.
+    _OpenStateConfig("WINDOW_FRONT_LEFT", "window_front_left", _WINDOW),
+    _OpenStateConfig("WINDOW_FRONT_RIGHT", "window_front_right", _WINDOW),
+    _OpenStateConfig("WINDOW_REAR_LEFT", "window_rear_left", _WINDOW),
+    _OpenStateConfig("WINDOW_REAR_RIGHT", "window_rear_right", _WINDOW),
+    # Sunroof (Cayenne, Panamera) + rear sunroof (some Panamera).
+    _OpenStateConfig("SUNROOF", "sunroof", _WINDOW),
+    _OpenStateConfig("SUNROOF_REAR", "sunroof_rear", _WINDOW),
+    # Convertible top (718 Boxster / 911 Cabriolet / 911 Targa).
+    _OpenStateConfig("TOP", "convertible_top", _WINDOW),
+    # Charge flaps (BEV/PHEV — left and right depending on model).
+    _OpenStateConfig("CHARGE_FLAP_LEFT", "charge_flap_left"),
+    _OpenStateConfig("CHARGE_FLAP_RIGHT", "charge_flap_right"),
+    # Active aero spoiler (Taycan / 911 etc.) — diagnostic, cosmetic.
+    _OpenStateConfig(
+        "SPOILER", "spoiler",
+        enabled_by_default=False, entity_category=_DIAG,
+    ),
+    # Service flap (washer fluid / oil access) — maintenance-only, disabled.
+    _OpenStateConfig(
+        "SERVICE_FLAP", "service_flap",
+        enabled_by_default=False, entity_category=_DIAG,
+    ),
+]
+
+
+def _open_state_descriptions() -> list[PorscheBinarySensorEntityDescription]:
+    """Materialise the OPEN_STATE_* config table into entity descriptions."""
+    descriptions: list[PorscheBinarySensorEntityDescription] = []
+    for cfg in _OPEN_STATE_CONFIG:
+        api_key = f"OPEN_STATE_{cfg.api_suffix}"
+        descriptions.append(
+            PorscheBinarySensorEntityDescription(
+                key=cfg.key,
+                translation_key=cfg.key,
+                measurement_node=api_key,
+                measurement_leaf="isOpen",
+                device_class=cfg.device_class,
+                entity_category=cfg.entity_category,
+                entity_registry_enabled_default=cfg.enabled_by_default,
+                # Capability gate: the API only includes the key for
+                # components the car physically has. Mirrors the climate
+                # zones fix (#292): missing key == not available.
+                is_available=lambda v, _k=api_key: _k in v.data,
+            ),
+        )
+    return descriptions
+
+
+SENSOR_TYPES.extend(_open_state_descriptions())
+
+
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
