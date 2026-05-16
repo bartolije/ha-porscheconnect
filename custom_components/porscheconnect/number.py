@@ -23,6 +23,7 @@ from . import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -119,6 +120,14 @@ class PorscheNumber(PorscheBaseEntity, NumberEntity):
         try:
             await self.entity_description.remote_service(self.vehicle, value)
         except Exception as ex:
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": self.entity_description.key,
+                    "vin": self.vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
 
         self.coordinator.async_update_listeners()

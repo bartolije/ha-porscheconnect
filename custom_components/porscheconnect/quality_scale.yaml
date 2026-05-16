@@ -138,7 +138,16 @@ rules:
       doors, location, lock, climate, mileage, range, fuel, charging
       status/power/finished) stays enabled.
   entity-translations: done
-  exception-translations: todo
+  exception-translations:
+    status: done
+    comment: |
+      All HomeAssistantError / ServiceValidationError raised by the
+      integration carry ``translation_domain`` + ``translation_key`` and
+      have matching ``exceptions.*`` entries in strings.json and
+      translations/en.json (climatisation_not_supported,
+      climate_zone_not_supported, invalid_device_id,
+      no_config_entry_for_device, remote_service_failed, lock_failed,
+      unlock_failed, pin_code_missing).
   icon-translations: done
   reconfiguration-flow: done
   repair-issues:

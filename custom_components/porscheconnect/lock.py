@@ -17,6 +17,7 @@ from . import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
+from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -71,7 +72,14 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         except PorscheExceptionError as ex:
             self._attr_is_locked = None
             self.async_write_ha_state()
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="lock_failed",
+                translation_placeholders={
+                    "vin": self.vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
         finally:
             self.coordinator.async_update_listeners()
 
@@ -89,12 +97,21 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
             except PorscheExceptionError as ex:
                 self._attr_is_locked = None
                 self.async_write_ha_state()
-                raise HomeAssistantError(ex) from ex
+                raise HomeAssistantError(
+                    translation_domain=DOMAIN,
+                    translation_key="unlock_failed",
+                    translation_placeholders={
+                        "vin": self.vehicle.vin,
+                        "error": str(ex),
+                    },
+                ) from ex
             finally:
                 self.coordinator.async_update_listeners()
         else:
-            msg = "PIN code not provided."
-            raise ValueError(msg)
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="pin_code_missing",
+            )
 
     @callback
     def _handle_coordinator_update(self) -> None:

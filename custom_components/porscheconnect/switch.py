@@ -18,6 +18,7 @@ from . import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
+from .const import DOMAIN
 
 PARALLEL_UPDATES = 0
 
@@ -107,7 +108,15 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
         try:
             await self.entity_description.remote_service_on(self.vehicle)
         except PorscheExceptionError as ex:
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": f"{self.entity_description.key}_on",
+                    "vin": self.vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
 
         self.coordinator.async_update_listeners()
 
@@ -116,6 +125,14 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
         try:
             await self.entity_description.remote_service_off(self.vehicle)
         except PorscheExceptionError as ex:
-            raise HomeAssistantError(ex) from ex
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="remote_service_failed",
+                translation_placeholders={
+                    "service": f"{self.entity_description.key}_off",
+                    "vin": self.vehicle.vin,
+                    "error": str(ex),
+                },
+            ) from ex
 
         self.coordinator.async_update_listeners()
