@@ -121,8 +121,13 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         errors = {}
         _LOGGER.debug("Validating input.")
 
-        unique_id = f"{user_input[CONF_EMAIL]}"
+        # Normalize the email so case variants (foo@bar.com vs FOO@BAR.COM)
+        # don't create duplicate accounts.
+        unique_id = user_input[CONF_EMAIL].strip().lower()
+        user_input[CONF_EMAIL] = unique_id
         await self.async_set_unique_id(unique_id)
+        if self.source not in (SOURCE_REAUTH, SOURCE_RECONFIGURE):
+            self._abort_if_unique_id_configured()
 
         try:
             info = await validate_input(user_input)

@@ -1,5 +1,7 @@
 """The Porsche Connect integration."""
 
+from __future__ import annotations
+
 import copy
 import logging
 import operator
@@ -10,6 +12,8 @@ import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.typing import ConfigType
@@ -20,13 +24,31 @@ from homeassistant.helpers.update_coordinator import (
 )
 from pyporscheconnectapi.account import PorscheConnectAccount
 from pyporscheconnectapi.connection import Connection
-from pyporscheconnectapi.exceptions import PorscheExceptionError
+from pyporscheconnectapi.exceptions import (
+    PorscheExceptionError,
+    PorscheWrongCredentialsError,
+)
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
+
+HTTP_UNAUTHORIZED = 401
+
+_AUTH_FAILED_MSG = "Authentication failed for Porsche Connect"
+_API_ERROR_MSG = "Error communicating with Porsche Connect API"
+
+# Type alias for the runtime data attached to each config entry.
+PorscheConnectConfigEntry = ConfigEntry["PorscheConnectDataUpdateCoordinator"]
+
+
+def _is_auth_error(exc: PorscheExceptionError) -> bool:
+    """Return True if the API error should trigger a reauth flow."""
+    if isinstance(exc, PorscheWrongCredentialsError):
+        return True
+    return getattr(exc, "code", None) == HTTP_UNAUTHORIZED
 
 
 def get_from_dict(datadict, keystring):
@@ -53,15 +75,23 @@ def _async_save_token(hass, config_entry, access_token):
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up this integration using YAML is not supported."""
+    """Set up the Porsche Connect integration (domain-level).
+
+    Services are domain-global, so they are registered exactly once here
+    rather than per-entry in async_setup_entry — registering per entry would
+    overwrite the same handler on every reload and leak references to the
+    previously-active coordinator.
+    """
+    from .services import async_setup_services
+
+    async_setup_services(hass)
     return True
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
+async def async_setup_entry(
+    hass: HomeAssistant, entry: PorscheConnectConfigEntry
+) -> bool:
     """Set up this integration using UI."""
-    if hass.data.get(DOMAIN) is None:
-        hass.data.setdefault(DOMAIN, {})
-
     async_client = get_async_client(hass)
     connection = Connection(
         entry.data.get("email"),
@@ -79,8 +109,24 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
         config_entry=entry,
         controller=controller,
     )
-    await coordinator.async_config_entry_first_refresh()
-    hass.data[DOMAIN][entry.entry_id] = coordinator
+
+    try:
+        await coordinator.async_config_entry_first_refresh()
+    except ConfigEntryAuthFailed:
+        # The coordinator already wrapped the auth error appropriately; let HA
+        # surface the reauth flow.
+        raise
+    except PorscheWrongCredentialsError as exc:
+        msg = f"{_AUTH_FAILED_MSG}: {exc}"
+        raise ConfigEntryAuthFailed(msg) from exc
+    except PorscheExceptionError as exc:
+        if _is_auth_error(exc):
+            msg = f"{_AUTH_FAILED_MSG}: {exc}"
+            raise ConfigEntryAuthFailed(msg) from exc
+        msg = f"{_API_ERROR_MSG}: {exc}"
+        raise ConfigEntryNotReady(msg) from exc
+
+    entry.runtime_data = coordinator
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
@@ -89,9 +135,10 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
 
     _async_save_token(hass, entry, controller.token)
 
-    from .services import setup_services
-
-    setup_services(hass, entry)
+    # Track that this entry is using our domain-global services so that the
+    # last unload can release them. We keep this in hass.data only as a small
+    # bookkeeping set; entity state lives on entry.runtime_data.
+    hass.data.setdefault(DOMAIN, set()).add(entry.entry_id)
 
     return True
 
@@ -118,9 +165,13 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
         super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=scan_interval)
 
-    def get_vechicle_data_leaf(self, vehicle, node, leaf):
+    def get_vehicle_data_leaf(self, vehicle, node, leaf):
         """Get data value leaf from dict."""
         return get_from_dict(get_from_dict(vehicle.data, node), leaf)
+
+    # Backwards-compat alias (historic typo kept so external references don't
+    # break mid-upgrade). New code should use get_vehicle_data_leaf.
+    get_vechicle_data_leaf = get_vehicle_data_leaf
 
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
@@ -137,9 +188,15 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     for vehicle in self.vehicles:
                         await vehicle.get_stored_overview()
 
+        except PorscheWrongCredentialsError as exc:
+            msg = f"{_AUTH_FAILED_MSG}: {exc}"
+            raise ConfigEntryAuthFailed(msg) from exc
         except PorscheExceptionError as exc:
-            msg = "Error communicating with API: %s"
-            raise UpdateFailed(msg, exc) from exc
+            if _is_auth_error(exc):
+                msg = f"{_AUTH_FAILED_MSG}: {exc}"
+                raise ConfigEntryAuthFailed(msg) from exc
+            msg = f"Error communicating with API: {exc}"
+            raise UpdateFailed(msg) from exc
         else:
             accesstoken = copy.deepcopy(self.controller.token)
 
@@ -151,7 +208,9 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             return {}
 
 
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
+async def async_unload_entry(
+    hass: HomeAssistant, entry: PorscheConnectConfigEntry
+) -> bool:
     """Unload a config entry."""
     unload_ok = await hass.config_entries.async_unload_platforms(
         entry,
@@ -159,16 +218,50 @@ async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     )
 
     if unload_ok:
-        hass.data[DOMAIN].pop(entry.entry_id)
+        tracked: set[str] = hass.data.get(DOMAIN, set())
+        tracked.discard(entry.entry_id)
+
+        # If this was the last entry, release the domain-global services so
+        # subsequent reloads don't accumulate stale registrations.
+        if not tracked:
+            from .services import async_unload_services
+
+            async_unload_services(hass)
+            hass.data.pop(DOMAIN, None)
 
     return unload_ok
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
+async def async_reload_entry(
+    hass: HomeAssistant, entry: PorscheConnectConfigEntry
+) -> None:
     """Reload config entry."""
     _LOGGER.info("Reloading config entry: %s", entry)
     await async_unload_entry(hass, entry)
     await async_setup_entry(hass, entry)
+
+
+async def async_remove_config_entry_device(
+    hass: HomeAssistant,
+    config_entry: PorscheConnectConfigEntry,
+    device_entry: dr.DeviceEntry,
+) -> bool:
+    """Remove a device from a config entry.
+
+    Allowed when the device's VIN is no longer present in the account's
+    vehicle list (e.g. the car was sold, returned, or otherwise unpaired in
+    the Porsche app).
+    """
+    coordinator = config_entry.runtime_data
+    known_vins = {vehicle.vin for vehicle in coordinator.vehicles}
+    device_vins = {
+        identifier[1]
+        for identifier in device_entry.identifiers
+        if identifier[0] == DOMAIN
+    }
+    # If none of the device's VINs are still active on the account, the user
+    # is free to remove it.
+    return device_vins.isdisjoint(known_vins)
 
 
 class PorscheBaseEntity(CoordinatorEntity):
@@ -186,19 +279,22 @@ class PorscheBaseEntity(CoordinatorEntity):
         super().__init__(coordinator)
 
         self.vehicle = vehicle
+        # Cache the VIN locally so unique_ids and device identifiers stay
+        # stable even if the user renames the car in the Porsche app.
+        self._vin = vehicle.vin
 
         self._attr_device_info = DeviceInfo(
-            identifiers={(DOMAIN, self.vehicle.vin)},
+            identifiers={(DOMAIN, self._vin)},
             name=vehicle.data["name"],
             model=vehicle.data["modelName"],
             manufacturer="Porsche",
-            serial_number=vehicle.vin,
+            serial_number=self._vin,
         )
 
     @property
     def vin(self) -> str:
         """Get the VIN (vehicle identification number) of the vehicle."""
-        return self.vehicle.vin
+        return self._vin
 
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
