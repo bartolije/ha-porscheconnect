@@ -188,9 +188,107 @@ If the car does not advertise `has_remote_climatisation` at all (e.g. an ICE
 911), the service raises `ServiceValidationError` before any API call is
 issued.
 
+#### Example call
+
+```yaml
+service: porscheconnect.climatisation_start
+data:
+  vehicle: 1a2b3c4d5e6f7890abcdef1234567890   # device id of the Porsche
+  temperature: 21
+  front_left: true
+  front_right: true
+```
+
 ## Examples
 
-Concrete Lovelace and automation examples to be added in a follow-up commit.
+### Lovelace dashboard snippet
+
+```yaml
+type: entities
+title: Taycan
+entities:
+  - entity: sensor.taycan_state_of_charge
+  - entity: sensor.taycan_remaining_range_electric
+  - entity: sensor.taycan_charging_status
+  - entity: sensor.taycan_charging_power
+  - entity: binary_sensor.taycan_doors_and_lids
+  - entity: binary_sensor.taycan_tire_pressure_status
+  - entity: lock.taycan_door_lock
+  - entity: switch.taycan_remote_climatisation
+  - entity: number.taycan_target_state_of_charge
+  - entity: button.taycan_flash_indicators
+```
+
+### Pre-heat the cabin at 7 am on cold mornings
+
+```yaml
+alias: Porsche pre-heat on cold mornings
+trigger:
+  - platform: time
+    at: "07:00:00"
+condition:
+  - condition: numeric_state
+    entity_id: sensor.openweathermap_temperature
+    below: 5
+action:
+  - service: porscheconnect.climatisation_start
+    data:
+      vehicle: 1a2b3c4d5e6f7890abcdef1234567890
+      temperature: 22
+      front_left: true
+      front_right: true
+mode: single
+```
+
+### Alert if doors are open more than five minutes after parking
+
+```yaml
+alias: Porsche door-open alert
+trigger:
+  - platform: state
+    entity_id: binary_sensor.taycan_doors_and_lids
+    to: "on"
+    for: "00:05:00"
+action:
+  - service: notify.mobile_app_my_phone
+    data:
+      title: Porsche
+      message: A door or lid has been open for five minutes.
+mode: single
+```
+
+### Log charging sessions to a logbook
+
+```yaml
+alias: Log Porsche charging start
+trigger:
+  - platform: state
+    entity_id: sensor.taycan_charging_status
+    to: charging
+action:
+  - service: logbook.log
+    data:
+      name: Taycan
+      message: "Charging started at {{ states('sensor.taycan_state_of_charge') }} %"
+      entity_id: sensor.taycan_state_of_charge
+mode: single
+```
+
+### Geofence: ping me when the car gets home
+
+```yaml
+alias: Porsche arrived home
+trigger:
+  - platform: state
+    entity_id: device_tracker.taycan
+    to: home
+action:
+  - service: notify.mobile_app_my_phone
+    data:
+      title: Porsche
+      message: The Taycan just arrived home.
+mode: single
+```
 
 ## Polling and data updates
 
