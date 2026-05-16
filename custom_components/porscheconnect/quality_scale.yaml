@@ -94,8 +94,12 @@ rules:
   # Gold (declared here so review tooling sees explicit positions)
   devices: done
   diagnostics:
-    status: todo
-    comment: Diagnostics platform not yet implemented.
+    status: done
+    comment: |
+      ``diagnostics.async_get_config_entry_diagnostics`` redacts password,
+      access/refresh tokens, addresses; masks the email local-part and VIN
+      (last 4 chars); blurs coordinates to 1 decimal. Includes per-vehicle
+      capability flags and coordinator update state.
   discovery-update-info:
     status: exempt
     comment: Cloud-polling integration, no local discovery.
