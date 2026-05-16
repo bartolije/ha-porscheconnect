@@ -31,9 +31,9 @@ async def test_async_setup_entry_success(
     await hass.async_block_till_done()
 
     assert mock_config_entry.state is ConfigEntryState.LOADED
-    assert mock_config_entry.entry_id in hass.data[DOMAIN]
-    # The coordinator must have collected exactly the vehicle we mocked.
-    coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]
+    # Coordinator now lives on entry.runtime_data (Silver pattern), not hass.data.
+    coordinator = mock_config_entry.runtime_data
+    assert coordinator is not None
     assert len(coordinator.vehicles) == 1
     mock_account.get_vehicles.assert_awaited_once()
 
@@ -108,4 +108,5 @@ async def test_async_unload_entry(
     assert await hass.config_entries.async_unload(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     assert mock_config_entry.state is ConfigEntryState.NOT_LOADED
-    assert mock_config_entry.entry_id not in hass.data.get(DOMAIN, {})
+    # runtime_data is cleared by HA once the entry is unloaded.
+    assert getattr(mock_config_entry, "runtime_data", None) is None

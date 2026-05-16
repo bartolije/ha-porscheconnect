@@ -40,7 +40,7 @@ async def test_coordinator_update_failure_marks_retry(
         await hass.async_block_till_done()
         assert mock_config_entry.state is ConfigEntryState.LOADED
 
-        coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]
+        coordinator = mock_config_entry.runtime_data
 
         # Subsequent refresh: vehicle raises a PorscheExceptionError.
         mock_vehicle.get_stored_overview = AsyncMock(
@@ -82,7 +82,7 @@ async def test_coordinator_auth_failure_triggers_reauth(
         assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-        coordinator = hass.data[DOMAIN][mock_config_entry.entry_id]
+        coordinator = mock_config_entry.runtime_data
         mock_vehicle.get_stored_overview = AsyncMock(
             side_effect=PorscheWrongCredentialsError("401"),
         )

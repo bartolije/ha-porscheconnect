@@ -54,8 +54,13 @@ def _make_vehicle() -> SimpleNamespace:
     vehicle.vin = "WP0ZZZY1ZLSA00001"
     vehicle.model_name = "Taycan Turbo S"
     vehicle.has_electric_drivetrain = True
+    vehicle.has_ice_drivetrain = False
     vehicle.has_remote_climatisation = True
+    vehicle.has_remote_services = True
+    vehicle.has_tire_pressure_monitoring = True
     vehicle.has_porsche_connect = True
+    vehicle.privacy_mode = False
+    vehicle.picture_locations = {}
     vehicle.data = {
         "name": "Taycan",
         "modelName": "Taycan Turbo S",
