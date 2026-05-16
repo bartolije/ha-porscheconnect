@@ -28,12 +28,16 @@ class PorscheImageEntityDescription(ImageEntityDescription):
     view: str | None = None
 
 
+# Only the side view is enabled by default — it makes the best "hero" image
+# for a dashboard. The other four angles are opt-in so we don't ship five
+# image entities per car on first install.
 IMAGE_TYPES: list[PorscheImageEntityDescription] = [
     PorscheImageEntityDescription(
         name="Front view",
         key="front_view",
         translation_key="front_view",
         view="frontView",
+        entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
         name="Side view",
@@ -46,18 +50,21 @@ IMAGE_TYPES: list[PorscheImageEntityDescription] = [
         key="rear_view",
         translation_key="rear_view",
         view="rearView",
+        entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
         name="Rear top view",
         key="rear_top_view",
         translation_key="rear_top_view",
         view="rearTopView",
+        entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
         name="Top view",
         key="top_view",
         translation_key="top_view",
         view="topView",
+        entity_registry_enabled_default=False,
     ),
 ]
 

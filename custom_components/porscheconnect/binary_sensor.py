@@ -40,6 +40,9 @@ class PorscheBinarySensorEntityDescription(BinarySensorEntityDescription):
 
 SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
     PorscheBinarySensorEntityDescription(
+        # Reflects an account-side configuration flag rather than live
+        # vehicle state — useful when debugging "why are my services not
+        # working", but noisy on a default dashboard.
         name="Remote access",
         key="remote_access",
         translation_key="remote_access",
@@ -47,6 +50,7 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         measurement_leaf="isEnabled",
         device_class=None,
         entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
     ),
     PorscheBinarySensorEntityDescription(
         name="Privacy mode",

@@ -128,7 +128,15 @@ rules:
       doors, parking, range, mileage, lock, location, images, switches)
       keeps the default user-facing category.
   entity-device-class: done
-  entity-disabled-by-default: todo
+  entity-disabled-by-default:
+    status: done
+    comment: |
+      Disabled by default: ``charging_rate`` (redundant with charging_power),
+      ``remote_access`` binary sensor (account-side config flag), and four of
+      the five vehicle photos (only side_view stays on by default to avoid
+      shipping 5 image entities per car). Everything user-facing (battery,
+      doors, location, lock, climate, mileage, range, fuel, charging
+      status/power/finished) stays enabled.
   entity-translations: done
   exception-translations: todo
   icon-translations: done
