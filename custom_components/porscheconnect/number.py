@@ -13,19 +13,20 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -58,25 +59,31 @@ NUMBER_TYPES: list[PorscheNumberEntityDescription] = [
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Porsche number from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    entities: list[PorscheNumber] = []
+    known_vins: set[str] = set()
 
-    for vehicle in coordinator.vehicles:
-        entities.extend(
-            [
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheNumber] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.extend(
                 PorscheNumber(coordinator, vehicle, description)
                 for description in NUMBER_TYPES
                 if description.is_available(vehicle)
-            ],
-        )
-    async_add_entities(entities)
+            )
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheNumber(PorscheBaseEntity, NumberEntity):
@@ -94,7 +101,7 @@ class PorscheNumber(PorscheBaseEntity, NumberEntity):
         super().__init__(coordinator, vehicle)
 
         self.entity_description = description
-        self._attr_unique_id = f"{vehicle.data['name']}-{description.key}"
+        self._attr_unique_id = f"{self._vin}-{description.key}"
 
     @property
     def native_value(self) -> float | None:

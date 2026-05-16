@@ -12,7 +12,6 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import (
     PERCENTAGE,
     UnitOfLength,
@@ -23,13 +22,15 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from . import DOMAIN as PORSCHE_DOMAIN
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True)
@@ -155,22 +156,31 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the sensors from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[PORSCHE_DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    entities = [
-        PorscheSensor(coordinator, vehicle, description)
-        for vehicle in coordinator.vehicles
-        for description in SENSOR_TYPES
-        if description.is_available(vehicle)
-    ]
+    known_vins: set[str] = set()
 
-    async_add_entities(entities)
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheSensor] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.extend(
+                PorscheSensor(coordinator, vehicle, description)
+                for description in SENSOR_TYPES
+                if description.is_available(vehicle)
+            )
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheSensor(PorscheBaseEntity, SensorEntity):
@@ -188,12 +198,12 @@ class PorscheSensor(PorscheBaseEntity, SensorEntity):
         super().__init__(coordinator, vehicle)
 
         self.entity_description = description
-        self._attr_unique_id = f"{vehicle.data['name']}-{description.key}"
+        self._attr_unique_id = f"{self._vin}-{description.key}"
 
     @callback
     def _handle_coordinator_update(self) -> None:
         """Handle updated data from the coordinator."""
-        state = self.coordinator.get_vechicle_data_leaf(
+        state = self.coordinator.get_vehicle_data_leaf(
             self.vehicle,
             self.entity_description.measurement_node,
             self.entity_description.measurement_leaf,

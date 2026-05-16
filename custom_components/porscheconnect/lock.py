@@ -1,10 +1,11 @@
 """Support for Porsche lock entity."""
 
+from __future__ import annotations
+
 import logging
 
 from homeassistant.components.lock import CONF_DEFAULT_CODE, LockEntity
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -13,26 +14,38 @@ from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Porsche Connect lock entity from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    async_add_entities(
-        PorscheLock(coordinator, vehicle) for vehicle in coordinator.vehicles
-    )
+    known_vins: set[str] = set()
+
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheLock] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.append(PorscheLock(coordinator, vehicle))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheLock(PorscheBaseEntity, LockEntity):
@@ -48,7 +61,7 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         """Initialize the lock."""
         super().__init__(coordinator, vehicle)
 
-        self._attr_unique_id = f'{vehicle.data["name"]}-lock'
+        self._attr_unique_id = f"{self._vin}-lock"
         self.door_lock_state_available = vehicle.has_remote_services
 
     async def async_lock(self) -> None:

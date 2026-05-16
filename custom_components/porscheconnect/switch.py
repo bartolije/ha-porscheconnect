@@ -1,12 +1,13 @@
 """Support for the Porsche Connect switch entities."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.switch import SwitchEntity, SwitchEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
@@ -14,9 +15,11 @@ from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
+
+PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -29,7 +32,7 @@ class PorscheSwitchEntityDescription(SwitchEntityDescription):
     is_available: Callable[[PorscheVehicle], bool] = lambda _: False
 
 
-NUMBER_TYPES: list[PorscheSwitchEntityDescription] = [
+SWITCH_TYPES: list[PorscheSwitchEntityDescription] = [
     PorscheSwitchEntityDescription(
         key="climatise",
         translation_key="climatise",
@@ -51,25 +54,31 @@ NUMBER_TYPES: list[PorscheSwitchEntityDescription] = [
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Porsche switch from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    entities: list[PorscheSwitch] = []
+    known_vins: set[str] = set()
 
-    for vehicle in coordinator.vehicles:
-        entities.extend(
-            [
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheSwitch] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.extend(
                 PorscheSwitch(coordinator, vehicle, description)
-                for description in NUMBER_TYPES
+                for description in SWITCH_TYPES
                 if description.is_available(vehicle)
-            ],
-        )
-    async_add_entities(entities)
+            )
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
@@ -86,7 +95,7 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
         """Initialize an Porsche Switch."""
         super().__init__(coordinator, vehicle)
         self.entity_description = description
-        self._attr_unique_id = f"{vehicle.vin}-{description.key}"
+        self._attr_unique_id = f"{self._vin}-{description.key}"
 
     @property
     def is_on(self) -> bool:
