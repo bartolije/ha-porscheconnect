@@ -1,12 +1,13 @@
 """Support for Porsche Connect button entities."""
 
+from __future__ import annotations
+
 from collections.abc import Callable, Coroutine
 from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
@@ -14,9 +15,11 @@ from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
+
+PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -48,26 +51,31 @@ BUTTON_TYPES: tuple[PorscheButtonEntityDescription, ...] = (
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Porsche buttons from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    entities: list[PorscheButton] = []
+    known_vins: set[str] = set()
 
-    for vehicle in coordinator.vehicles:
-        entities.extend(
-            [
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheButton] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.extend(
                 PorscheButton(coordinator, vehicle, description)
                 for description in BUTTON_TYPES
                 if description.is_available(vehicle)
-            ],
-        )
+            )
+        if new_entities:
+            async_add_entities(new_entities)
 
-    async_add_entities(entities)
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheButton(PorscheBaseEntity, ButtonEntity):

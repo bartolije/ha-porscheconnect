@@ -7,38 +7,49 @@ from typing import Any
 
 from homeassistant.components.device_tracker.config_entry import TrackerEntity
 from homeassistant.components.device_tracker.const import SourceType
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+
+PARALLEL_UPDATES = 0
 
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the device tracker from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
-    entities: list[PorscheDeviceTracker] = []
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    for vehicle in coordinator.vehicles:
-        if not vehicle.privacy_mode:
-            entities.append(PorscheDeviceTracker(coordinator, vehicle))
-        else:
-            _LOGGER.info("Vehicle is in privacy mode with location tracking disabled")
+    known_vins: set[str] = set()
 
-    async_add_entities(entities)
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheDeviceTracker] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            if vehicle.privacy_mode:
+                _LOGGER.info(
+                    "Vehicle is in privacy mode with location tracking disabled"
+                )
+                continue
+            new_entities.append(PorscheDeviceTracker(coordinator, vehicle))
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
@@ -52,7 +63,7 @@ class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
         """Initialize the device tracker."""
         super().__init__(coordinator, vehicle)
 
-        self._attr_unique_id = vehicle.vin
+        self._attr_unique_id = self._vin
         if (
             "customName" in vehicle.data and
             vehicle.data["customName"] != vehicle.model_name

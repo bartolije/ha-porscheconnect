@@ -1,1 +1,144 @@
-{}
+{
+    "config": {
+        "abort": {
+            "already_configured": "Device is already configured",
+            "reauth_successful": "Re-authentication was successful",
+            "reconfigure_successful": "Reconfiguration was successful",
+            "unique_id_mismatch": "The email address does not match the configured Porsche Connect account"
+        },
+        "error": {
+            "cannot_connect": "Failed to connect",
+            "invalid_auth": "Invalid authentication",
+            "unknown": "Unexpected error"
+        },
+        "step": {
+            "user": {
+                "data": {
+                    "password": "Password",
+                    "email": "Email"
+                }
+            },
+		    "captcha": {
+		        "title": "Captcha verification",
+		        "description": "{captcha_img}",
+		        "data": {
+		            "captcha_code": "Captcha code"
+		        }
+		    }
+        }
+    },
+    "entity": {
+        "button": {
+            "flash_indicators": {"name": "Flash indicators"},
+            "honk_and_flash_indicators": {"name": "Honk and flash indicators"},
+            "get_current_overview": {"name": "Get current vehicle information"}
+        },
+        "binary_sensor": {
+            "parking_brake": {"name": "Parking brake"},
+            "parking_light": {"name": "Parking light"},
+            "privacy_mode": {"name": "Privacy mode"},
+            "doors_and_lids": {"name": "Doors and lids"},
+            "tire_pressure_status": {
+				"name": "Tire pressure status",
+                "state": {
+                    "on": "Warning",
+                    "off": "Ok"
+                }
+			},
+            "remote_access": {"name": "Remote access"}
+        },
+        "image": {
+            "front_view": {"name": "View from the front"},
+            "side_view": {"name": "View from the side"},
+            "rear_view": {"name": "View from the rear"},
+            "rear_top_view": {"name": "View diagonally from above"},
+            "top_view": {"name": "View from above"}
+        },
+        "sensor": {
+            "charging_power": {
+                "name": "Charging power"
+            },
+            "charging_target": {
+                "name": "Charging target"
+            },
+            "charging_rate": {
+                "name": "Charging rate"
+            },
+            "charging_finished": {
+                "name": "Charging ends"
+            },
+            "remaining_range_electric": {
+                "name": "Remaining range electric"
+            },
+            "state_of_charge": {
+                "name": "State of charge"
+            },
+            "mileage": {
+                "name": "Mileage"
+            },
+            "remaining_range": {
+                "name": "Remaining range"
+            },
+            "fuel_level": {
+                "name": "Fuel level"
+            },
+            "charging_status": {
+                "name": "Charging status",
+                "state": {
+                    "charging": "Charging",
+                    "charging_completed": "Charging completed",
+                    "charging_error": "Charging error",
+                    "initialising": "Initialising charging",
+                    "instant_charging": "Instant charging",
+                    "not_charging": "Not charging",
+                    "not_plugged": "Not connected",
+                    "off": "Charging off"
+                }
+            }
+        },
+        "number": {
+            "target_soc": {"name": "Target state of charge"}
+        },
+        "lock": {
+            "lock": {
+                "name": "Door lock"
+            }
+        },
+        "switch": {
+            "climatise": {"name": "Remote climatisation"},
+            "direct_charging": {"name": "Direct charging"}
+        }
+    },
+    "services": {
+        "climatisation_start": {
+            "name": "Start remote climatisation",
+            "description": "Starts remote climatisation of the passenger compartment with specified parameters",
+            "fields": {
+                "vehicle": {
+                    "name": "Vehicle",
+                    "description": "The vehicle to be climatised."
+                },
+                "temperature": {
+                    "name": "Temperatur",
+                    "description": "Target temperature for climatisation (default 20 degrees C)"
+                },
+                "front_left": {
+                    "name": "Seat heating front left",
+                    "description": "If front left seat heater should be activated (default off)"
+                }, 
+                "front_right": {
+                    "name": "Seat heating front right",
+                    "description": "If front right seat heater should be activated (default off)"
+                },
+                "rear_left": {
+                    "name": "Seat heating rear left",
+                    "description": "If rear left seat heater should be activated (default off)"
+                },
+                "rear_right": {
+                    "name": "Seat heating rear right",
+                    "description": "If rear right seat heater should be activated (default off)"
+                }
+            }
+        }
+    }
+}

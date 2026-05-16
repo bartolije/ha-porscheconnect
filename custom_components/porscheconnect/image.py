@@ -1,30 +1,31 @@
-"""Demo image platform."""
+"""Porsche Connect image platform."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 
 from homeassistant.components.image import Image, ImageEntity, ImageEntityDescription
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
+from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 
 from . import (
     PorscheBaseEntity,
+    PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
     PorscheVehicle,
 )
-from .const import DOMAIN
 
 CONTENT_TYPE = "image/png"
+
+PARALLEL_UPDATES = 0
 
 
 @dataclass(frozen=True)
 class PorscheImageEntityDescription(ImageEntityDescription):
     """Describes a Porsche image entity."""
 
-    view: str = None
+    view: str | None = None
 
 
 IMAGE_TYPES: list[PorscheImageEntityDescription] = [
@@ -63,22 +64,31 @@ IMAGE_TYPES: list[PorscheImageEntityDescription] = [
 
 async def async_setup_entry(
     hass: HomeAssistant,
-    config_entry: ConfigEntry,
+    config_entry: PorscheConnectConfigEntry,
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     """Set up the Porsche Connect image entity from config entry."""
-    coordinator: PorscheConnectDataUpdateCoordinator = hass.data[DOMAIN][
-        config_entry.entry_id
-    ]
+    coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    entities = [
-        PorscheImage(hass, coordinator, vehicle, description)
-        for vehicle in coordinator.vehicles
-        for description in IMAGE_TYPES
-        if description.view in vehicle.picture_locations
-    ]
+    known_vins: set[str] = set()
 
-    async_add_entities(entities)
+    @callback
+    def _async_add_entities() -> None:
+        new_entities: list[PorscheImage] = []
+        for vehicle in coordinator.vehicles:
+            if vehicle.vin in known_vins:
+                continue
+            known_vins.add(vehicle.vin)
+            new_entities.extend(
+                PorscheImage(hass, coordinator, vehicle, description)
+                for description in IMAGE_TYPES
+                if description.view in vehicle.picture_locations
+            )
+        if new_entities:
+            async_add_entities(new_entities)
+
+    _async_add_entities()
+    config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
 class PorscheImage(PorscheBaseEntity, ImageEntity):
@@ -100,7 +110,7 @@ class PorscheImage(PorscheBaseEntity, ImageEntity):
         self.entity_description = description
 
         self._attr_content_type = CONTENT_TYPE
-        self._attr_unique_id = f'{vehicle.data["name"]}-{description.key}'
+        self._attr_unique_id = f"{self._vin}-{description.key}"
         self._attr_image_url = vehicle.picture_locations[description.view]
 
     async def async_added_to_hass(self):

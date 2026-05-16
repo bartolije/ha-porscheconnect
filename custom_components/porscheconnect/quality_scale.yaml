@@ -1,0 +1,147 @@
+rules:
+  # Bronze
+  action-setup: done
+  appropriate-polling:
+    status: done
+    comment: |
+      Polls every DEFAULT_SCAN_INTERVAL (1920 s) via DataUpdateCoordinator;
+      the interval is also overridable via CONF_SCAN_INTERVAL.
+  brands:
+    status: exempt
+    comment: |
+      Brand is "Porsche" — added to home-assistant/brands separately, not
+      part of this repository.
+  common-modules: done
+  config-flow-test-coverage:
+    status: todo
+    comment: |
+      Tests directory is being rewritten in a parallel worktree; new
+      assertions for unique_id casing and runtime_data wiring still pending.
+  config-flow: done
+  dependency-transparency: done
+  docs-actions:
+    status: todo
+    comment: README documents the service action briefly; full docs forthcoming.
+  docs-high-level-description: done
+  docs-installation-instructions: done
+  docs-removal-instructions:
+    status: todo
+    comment: README does not yet describe the removal procedure.
+  entity-event-setup: done
+  entity-unique-id:
+    status: done
+    comment: |
+      All platforms now derive unique_id from the immutable VIN
+      (``f"{self._vin}-{description.key}"``) so renaming the car in the
+      Porsche app does not break entity history.
+  has-entity-name: done
+  runtime-data:
+    status: done
+    comment: |
+      Coordinator is attached as ``entry.runtime_data``; every platform's
+      ``async_setup_entry`` reads from it instead of ``hass.data``.
+  test-before-configure:
+    status: done
+    comment: validate_input() in config_flow performs a login round-trip.
+  test-before-setup:
+    status: done
+    comment: |
+      ``async_setup_entry`` performs ``async_config_entry_first_refresh``
+      and converts 401 to ConfigEntryAuthFailed / other errors to
+      ConfigEntryNotReady.
+  unique-config-entry:
+    status: done
+    comment: |
+      unique_id = email.lower().strip(); ``_abort_if_unique_id_configured``
+      enforced on user flow.
+
+  # Silver
+  action-exceptions:
+    status: done
+    comment: |
+      Service handlers translate PorscheExceptionError into HomeAssistantError
+      and use ServiceValidationError for invalid device ids.
+  config-entry-unloading: done
+  docs-configuration-parameters:
+    status: exempt
+    comment: No options flow.
+  docs-installation-parameters: done
+  entity-unavailable:
+    status: done
+    comment: |
+      Entities inherit from CoordinatorEntity, so ``available`` automatically
+      reflects coordinator update success.
+  integration-owner: done
+  log-when-unavailable:
+    status: done
+    comment: |
+      DataUpdateCoordinator logs at WARNING when an update fails; auth
+      failures are surfaced through ConfigEntryAuthFailed which HA
+      narrates to the user.
+  parallel-updates:
+    status: done
+    comment: |
+      Every platform declares ``PARALLEL_UPDATES = 0`` since entities
+      read-only from the shared coordinator.
+  reauthentication-flow:
+    status: done
+    comment: |
+      401 / PorscheWrongCredentialsError raised from coordinator updates
+      and from initial setup trigger ConfigEntryAuthFailed, which routes
+      the user into ``async_step_reauth``.
+  test-coverage:
+    status: todo
+    comment: Tests being rewritten in a parallel worktree.
+
+  # Gold (declared here so review tooling sees explicit positions)
+  devices: done
+  diagnostics:
+    status: todo
+    comment: Diagnostics platform not yet implemented.
+  discovery-update-info:
+    status: exempt
+    comment: Cloud-polling integration, no local discovery.
+  discovery:
+    status: exempt
+    comment: Cloud-polling integration, no local discovery.
+  docs-data-update: todo
+  docs-examples: todo
+  docs-known-limitations: todo
+  docs-supported-devices: todo
+  docs-supported-functions: todo
+  docs-troubleshooting: todo
+  docs-use-cases: todo
+  dynamic-devices:
+    status: done
+    comment: |
+      Every platform registers a coordinator listener that creates
+      entities for VINs appearing after the initial refresh — newly
+      paired vehicles show up without restarting Home Assistant.
+  entity-category: todo
+  entity-device-class: done
+  entity-disabled-by-default: todo
+  entity-translations: done
+  exception-translations: todo
+  icon-translations: done
+  reconfiguration-flow: done
+  repair-issues:
+    status: exempt
+    comment: |
+      No actionable repair conditions detected beyond the standard
+      reauth path, which HA surfaces as a repair automatically.
+  stale-devices:
+    status: done
+    comment: |
+      ``async_remove_config_entry_device`` permits removal whenever the
+      device's VINs are no longer present on the linked account.
+
+  # Platinum
+  async-dependency: done
+  inject-websession:
+    status: done
+    comment: |
+      ``get_async_client(hass)`` is forwarded to the API client.
+  strict-typing:
+    status: todo
+    comment: |
+      Most public surface is typed; some legacy helpers still untyped.
