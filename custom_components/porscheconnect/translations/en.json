@@ -109,6 +109,14 @@
             "direct_charging": {"name": "Direct charging"}
         }
     },
+    "exceptions": {
+        "climatisation_not_supported": {
+            "message": "Remote climatisation is not supported by vehicle {vehicle}."
+        },
+        "climate_zone_not_supported": {
+            "message": "Climate zone '{zone}' is not available on vehicle {vehicle}. Remove this option from the service call."
+        }
+    },
     "services": {
         "climatisation_start": {
             "name": "Start remote climatisation",
