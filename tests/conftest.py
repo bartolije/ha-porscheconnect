@@ -1,288 +1,114 @@
-"""Global fixtures for Porsche Connect integration."""
+"""Shared fixtures for the Porsche Connect test suite."""
 
-import asyncio
-from typing import Any
-from unittest.mock import patch
+from __future__ import annotations
+
+from collections.abc import Generator
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from pyporscheconnectapi.exceptions import PorscheException
-from pyporscheconnectapi.exceptions import PorscheWrongCredentials
+from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from . import load_fixture_json
+from custom_components.porscheconnect.const import DOMAIN
 
-# from unittest.mock import Mock
-
-pytest_plugins = "pytest_homeassistant_custom_component"
-
-
-def async_return(result):
-    f = asyncio.Future()
-    f.set_result(result)
-    return f
+# Enables the pytest-homeassistant-custom-component plugin and its fixtures
+# (notably `hass`, `enable_custom_integrations`).
+pytest_plugins = ("pytest_homeassistant_custom_component",)
 
 
-# This fixture is used to prevent HomeAssistant from attempting to create and dismiss persistent
-# notifications. These calls would fail without this fixture since the persistent_notification
-# integration is never loaded during a test.
-@pytest.fixture(name="skip_notifications", autouse=True)
-def skip_notifications_fixture():
-    """Skip notification calls."""
-    with patch("homeassistant.components.persistent_notification.async_create"), patch(
-        "homeassistant.components.persistent_notification.async_dismiss"
-    ):
-        yield
+TEST_EMAIL = "tester@example.com"
+TEST_PASSWORD = "hunter2"
+TEST_TOKEN = {"access_token": "abc123", "expires_in": 3600}
 
 
-@pytest.fixture(name="auto_enable_custom_integrations", autouse=True)
+@pytest.fixture(autouse=True)
 def auto_enable_custom_integrations(
-    hass: Any, enable_custom_integrations: Any  # noqa: F811
-) -> None:
-    """Enable custom integrations defined in the test dir."""
+    enable_custom_integrations,  # noqa: ARG001
+):
+    """Enable loading of the porscheconnect custom component during tests."""
+    yield
 
 
 @pytest.fixture
-def mock_connection():
-    """Prevent setup."""
+def mock_config_entry() -> MockConfigEntry:
+    """Return a MockConfigEntry matching the integration's expected schema."""
+    return MockConfigEntry(
+        domain=DOMAIN,
+        title=TEST_EMAIL,
+        unique_id=TEST_EMAIL.lower(),
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: TEST_PASSWORD,
+            CONF_ACCESS_TOKEN: TEST_TOKEN,
+        },
+    )
 
-    fixture_name = "taycan"
-    fixture_data = load_fixture_json(fixture_name)
-    print(f"Using mock connedion fixture {fixture_name}")
 
-    async def mock_get(self, url, params=None):
-        print(f"Mock connection GET {url}")
-        print(params)
-        ret = fixture_data["GET"].get(url, {})
-        print(ret)
-        return ret
+def _make_vehicle() -> SimpleNamespace:
+    """Build a minimal stand-in for `pyporscheconnectapi.vehicle.PorscheVehicle`.
 
-    async def mock_post(self, url, data=None, json=None):
-        print(f"Mock connection POST {url}")
-        print(data)
-        print(json)
-        ret = fixture_data["POST"].get(url, {})
-        print(ret)
-        return ret
+    Only the attributes the integration actually reads are populated.
+    """
+    vehicle = SimpleNamespace()
+    vehicle.vin = "WP0ZZZY1ZLSA00001"
+    vehicle.model_name = "Taycan Turbo S"
+    vehicle.has_electric_drivetrain = True
+    vehicle.has_remote_climatisation = True
+    vehicle.has_porsche_connect = True
+    vehicle.data = {
+        "name": "Taycan",
+        "modelName": "Taycan Turbo S",
+        "vin": vehicle.vin,
+    }
+    vehicle.get_stored_overview = AsyncMock(return_value=None)
+    vehicle.get_picture_locations = AsyncMock(return_value=None)
+    vehicle.remote_services = SimpleNamespace(
+        climatise_on=AsyncMock(return_value=None),
+    )
+    return vehicle
 
-    async def mock_tokens(self, application, wasExpired=False):
-        print(f"Request mock token for {application}")
-        return {}
 
-    async def mock_getAllTokens(self):
-        return {}
+@pytest.fixture
+def mock_vehicle() -> SimpleNamespace:
+    """Single mock vehicle suitable for setup paths."""
+    return _make_vehicle()
 
-    with patch("pyporscheconnectapi.client.Connection.get", mock_get), patch(
-        "pyporscheconnectapi.client.Connection.post", mock_post
-    ), patch(
-        "pyporscheconnectapi.client.Connection.getAllTokens", mock_getAllTokens
-    ), patch(
-        "pyporscheconnectapi.client.Connection._requestToken", mock_tokens
+
+@pytest.fixture
+def mock_account(mock_vehicle) -> MagicMock:
+    """A mocked `PorscheConnectAccount` returning one vehicle."""
+    account = MagicMock()
+    account.token = TEST_TOKEN
+    account.get_vehicles = AsyncMock(return_value=[mock_vehicle])
+    return account
+
+
+@pytest.fixture
+def mock_connection_cls() -> Generator[MagicMock, None, None]:
+    """Patch `Connection` at its import sites (config_flow + __init__)."""
+    instance = MagicMock()
+    instance.get_token = AsyncMock(return_value=TEST_TOKEN)
+    instance.token = TEST_TOKEN
+    with (
+        patch(
+            "custom_components.porscheconnect.config_flow.Connection",
+            return_value=instance,
+        ) as cf_cls,
+        patch(
+            "custom_components.porscheconnect.Connection",
+            return_value=instance,
+        ),
     ):
-        yield
+        cf_cls.instance = instance
+        yield cf_cls
 
 
 @pytest.fixture
-def mock_connection_privacy():
-    """Prevent setup."""
-
-    fixture_name = "taycan_privacy"
-    fixture_data = load_fixture_json(fixture_name)
-
-    print(f"Using mock connedion fixture {fixture_name}")
-
-    async def mock_get(self, url, params=None):
-        print(f"Mock connection GET {url}")
-        print(params)
-        ret = fixture_data["GET"].get(url, {})
-        print(ret)
-        return ret
-
-    async def mock_post(self, url, data=None, json=None):
-        print(f"Mock connection POST {url}")
-        print(data)
-        print(json)
-        ret = fixture_data["POST"].get(url, {})
-        print(ret)
-        return ret
-
-    async def mock_tokens(self, application, wasExpired=False):
-        print(f"Request mock token for {application}")
-        return {}
-
-    async def mock_getAllTokens(self):
-        return {}
-
-    with patch("pyporscheconnectapi.client.Connection.get", mock_get), patch(
-        "pyporscheconnectapi.client.Connection.post", mock_post
-    ), patch(
-        "pyporscheconnectapi.client.Connection.getAllTokens", mock_getAllTokens
-    ), patch(
-        "pyporscheconnectapi.client.Connection._requestToken", mock_tokens
-    ):
-        yield
-
-
-@pytest.fixture
-def mock_noaccess(mock_connection):
-    """Return a mocked client object."""
-
-    async def mock_access(self, vin):
-        return {"allowed": False, "reason": "Test reason"}
-
-    with patch("custom_components.porscheconnect.Client.isAllowed", mock_access):
-        yield
-
-
-@pytest.fixture
-def mock_lock_lock(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.lock") as mock_lock:
-        yield mock_lock
-
-
-@pytest.fixture
-def mock_lock_unlock(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.unlock") as mock_unlock:
-        yield mock_unlock
-
-
-@pytest.fixture
-def mock_set_charging_level(mock_connection):
-    """Return a mocked client object."""
+def mock_account_cls(mock_account) -> Generator[MagicMock, None, None]:
+    """Patch `PorscheConnectAccount` where __init__.py imports it."""
     with patch(
-        "custom_components.porscheconnect.Client.updateChargingProfile"
-    ) as set_level:
-        yield set_level
-
-
-@pytest.fixture
-def mock_honk_and_flash(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.honkAndFlash") as honkflash:
-        yield honkflash
-
-
-@pytest.fixture
-def mock_flash(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.flash") as flash:
-        yield flash
-
-
-@pytest.fixture
-def mock_set_climate_on(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.climateOn") as climate_on:
-        yield climate_on
-
-
-@pytest.fixture
-def mock_set_climate_off(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.climateOff") as climate_off:
-        yield climate_off
-
-
-@pytest.fixture
-def mock_set_charge_on(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.directChargeOn") as charge_on:
-        yield charge_on
-
-
-@pytest.fixture
-def mock_set_charge_off(mock_connection):
-    """Return a mocked client object."""
-    with patch("custom_components.porscheconnect.Client.directChargeOff") as charge_off:
-        yield charge_off
-
-
-@pytest.fixture(name="mock_client")
-def mock_client_fixture():
-    """Prevent setup."""
-    with patch("custom_components.porscheconnect.Client") as mock:
-        instance = mock.return_value
-        instance.getVehicles.return_value = async_return([])
-        instance.getAllTokens.return_value = async_return([])
-        instance.isTokenRefreshed.return_value = False
-        yield
-
-
-@pytest.fixture(name="mock_client_error")
-def mock_client_error_fixture():
-    """Prevent setup."""
-    with patch("custom_components.porscheconnect.Client") as mock:
-        instance = mock.return_value
-        instance.getVehicles.return_value = async_return([])
-        instance.getVehicles.side_effect = PorscheException("Test")
-        instance.getAllTokens.return_value = async_return([])
-        yield
-
-
-@pytest.fixture
-def mock_client_update_error(mock_connection):
-    """Prevent setup."""
-    with patch(
-        "custom_components.porscheconnect.Client.getPosition",
-        side_effect=PorscheException,
-    ):
-        yield
-
-
-# This fixture, when used, will result in calls to async_get_data to return None. To have the call
-# return a value, we would add the `return_value=<VALUE_TO_RETURN>` parameter to the patch call.
-@pytest.fixture(name="bypass_connection_connect")
-def bypass_connection_connect_fixture():
-    print("Using bypass connection connect")
-    """Skip calls to get data from API."""
-    with patch("pyporscheconnectapi.connection.Connection._login"), patch(
-        "pyporscheconnectapi.connection.Connection.getAllTokens"
-    ):
-        yield
-
-
-# In this fixture, we are forcing calls to async_get_data to raise an Exception. This is useful
-# for exception handling.
-@pytest.fixture(name="error_connection_connect")
-def error_connection_connect_fixture():
-    """Simulate error when retrieving data from API."""
-    with patch(
-        "pyporscheconnectapi.connection.Connection._login",
-        side_effect=Exception,
-    ), patch("pyporscheconnectapi.connection.Connection.getAllTokens"):
-        yield
-
-
-# In this fixture, we are forcing calls to async_get_data to raise an Exception. This is useful
-# for exception handling.
-@pytest.fixture(name="error_connection_login")
-def error_connection_login_fixture():
-    """Simulate error when retrieving data from API."""
-    with patch(
-        "pyporscheconnectapi.connection.Connection._login",
-        side_effect=PorscheWrongCredentials,
-    ), patch("pyporscheconnectapi.connection.Connection.getAllTokens"):
-        yield
-
-
-# This fixture, when used, will result in calls to async_get_data to return None. To have the call
-# return a value, we would add the `return_value=<VALUE_TO_RETURN>` parameter to the patch call.
-@pytest.fixture(name="bypass_get_data")
-def bypass_get_data_fixture():
-    """Skip calls to get data from API."""
-    with patch(
-        "custom_components.porscheconnect.PorscheConnectApiClient.async_get_data"
-    ):
-        yield
-
-
-# In this fixture, we are forcing calls to async_get_data to raise an Exception. This is useful
-# for exception handling.
-@pytest.fixture(name="error_on_get_data")
-def error_get_data_fixture():
-    """Simulate error when retrieving data from API."""
-    with patch(
-        "custom_components.porscheconnect.PorscheConnectApiClient.async_get_data",
-        side_effect=Exception,
-    ):
-        yield
+        "custom_components.porscheconnect.PorscheConnectAccount",
+        return_value=mock_account,
+    ) as cls:
+        yield cls

@@ -1,105 +1,190 @@
-"""Test Porsche Connect config flow."""
-from unittest.mock import patch
+"""Tests for the Porsche Connect config flow."""
+
+from __future__ import annotations
+
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
-from custom_components.porscheconnect.const import (
-    DOMAIN,
-)
 from homeassistant import config_entries
-from homeassistant import data_entry_flow
+from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
+from homeassistant.core import HomeAssistant
+from homeassistant.data_entry_flow import FlowResultType
+from pyporscheconnectapi.exceptions import (
+    PorscheCaptchaRequiredError,
+    PorscheWrongCredentialsError,
+)
+from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from .const import MOCK_CONFIG
+from custom_components.porscheconnect.const import DOMAIN
+
+from .conftest import TEST_EMAIL, TEST_PASSWORD, TEST_TOKEN
 
 
-# from pytest_homeassistant_custom_component.common import MockConfigEntry
+def _connection_with_token(token=TEST_TOKEN):
+    """Return a MagicMock that yields a token on get_token()."""
+    instance = MagicMock()
+    instance.get_token = AsyncMock(return_value=token)
+    instance.token = token
+    return instance
 
 
-# This fixture bypasses the actual setup of the integration
-# since we only want to test the config flow. We test the
-# actual functionality of the integration in other test modules.
-@pytest.fixture(autouse=True)
-def bypass_setup_fixture():
-    """Prevent setup."""
+async def test_user_step_happy_path(hass: HomeAssistant) -> None:
+    """User submits valid credentials → an entry is created."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "user"
+
     with patch(
-        "custom_components.porscheconnect.async_setup",
-        return_value=True,
-    ), patch(
-        "custom_components.porscheconnect.async_setup_entry",
-        return_value=True,
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(),
     ):
-        yield
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert result["title"] == TEST_EMAIL
+    assert result["data"][CONF_EMAIL] == TEST_EMAIL
+    assert result["data"][CONF_PASSWORD] == TEST_PASSWORD
+    assert result["data"][CONF_ACCESS_TOKEN] == TEST_TOKEN
+
+    entries = hass.config_entries.async_entries(DOMAIN)
+    assert len(entries) == 1
+    # Unique id should be the email (the parallel structural fix lower-cases it).
+    assert entries[0].unique_id in {TEST_EMAIL, TEST_EMAIL.lower()}
 
 
-# Here we simiulate a successful config flow from the backend.
-# Note that we use the `bypass_get_data` fixture here because
-# we want the config flow validation to succeed during the test.
-@pytest.mark.asyncio
-async def test_successful_config_flow(hass, bypass_connection_connect):
-    """Test a successful config flow."""
-    # Initialize a config flow
+async def test_user_step_wrong_credentials(hass: HomeAssistant) -> None:
+    """Wrong creds → form re-shown with `invalid_auth`."""
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
     )
 
-    # Check that the config flow shows the user form as the first step
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
+    instance = MagicMock()
+    instance.get_token = AsyncMock(side_effect=PorscheWrongCredentialsError("nope"))
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=instance,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: "bad"},
+        )
+
+    assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
+    assert result["errors"] == {"base": "invalid_auth"}
 
-    # If a user were to enter `test_username` for username and `test_password`
-    # for password, it would result in this function call
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input=MOCK_CONFIG
+
+async def test_user_step_already_configured(hass: HomeAssistant) -> None:
+    """Submitting the same email twice → flow aborts with already_configured."""
+    existing = MockConfigEntry(
+        domain=DOMAIN,
+        title=TEST_EMAIL,
+        unique_id=TEST_EMAIL.lower(),
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: TEST_PASSWORD,
+            CONF_ACCESS_TOKEN: TEST_TOKEN,
+        },
     )
-
-    # Check that the config flow is complete and a new entry is created with
-    # the input data
-    assert result["type"] == data_entry_flow.RESULT_TYPE_CREATE_ENTRY
-    assert result["title"] == "test_username"
-    assert result["data"] == MOCK_CONFIG
-    assert result["result"]
-
-
-# In this case, we want to simulate a failure during the config flow.
-# We use the `error_on_get_data` mock instead of `bypass_get_data`
-# (note the function parameters) to raise an Exception during
-# validation of the input config.
-@pytest.mark.asyncio
-async def test_failed_config_flow_connect(hass, error_connection_connect):
-    """Test a failed config flow due to credential validation failure."""
-
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "user"
-
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input=MOCK_CONFIG
-    )
-
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["errors"] == {"base": "connect"}
-
-
-# In this case, we want to simulate a failure during the config flow.
-# We use the `error_on_get_data` mock instead of `bypass_get_data`
-# (note the function parameters) to raise an Exception during
-# validation of the input config.
-@pytest.mark.asyncio
-async def test_failed_config_flow_login(hass, error_connection_login):
-    """Test a failed config flow due to credential validation failure."""
+    existing.add_to_hass(hass)
 
     result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
     )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["step_id"] == "user"
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "already_configured"
 
-    result = await hass.config_entries.flow.async_configure(
-        result["flow_id"], user_input=MOCK_CONFIG
+
+async def test_user_step_captcha_required(hass: HomeAssistant) -> None:
+    """Captcha required → flow transitions to the captcha step.
+
+    The flow's `_async_form_captcha` decodes the captcha as a base64 SVG, so
+    feed it a real (but tiny) base64-encoded SVG payload.
+    """
+    import base64
+
+    svg = b'<svg width="150" height="50"></svg>'
+    captcha_uri = "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
+
+    err = PorscheCaptchaRequiredError("captcha please")
+    err.captcha = captcha_uri
+    err.state = "state-token-xyz"
+
+    instance = MagicMock()
+    instance.get_token = AsyncMock(side_effect=err)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
     )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=instance,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
 
-    assert result["type"] == data_entry_flow.RESULT_TYPE_FORM
-    assert result["errors"] == {"base": "auth"}
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "captcha"
+
+
+async def test_reauth_flow_updates_entry(hass: HomeAssistant) -> None:
+    """Reauth on an existing entry should update credentials in place."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=TEST_EMAIL,
+        unique_id=TEST_EMAIL.lower(),
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: "old-password",
+            CONF_ACCESS_TOKEN: {"access_token": "old"},
+        },
+    )
+    entry.add_to_hass(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_REAUTH,
+            "entry_id": entry.entry_id,
+            "unique_id": entry.unique_id,
+        },
+        data=dict(entry.data),
+    )
+    assert result["type"] == FlowResultType.FORM
+
+    new_token = {"access_token": "fresh", "expires_in": 3600}
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(new_token),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: "new-password"},
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] in {"reauth_successful", "reconfigure_successful"}
+    assert entry.data[CONF_PASSWORD] == "new-password"
+    assert entry.data[CONF_ACCESS_TOKEN] == new_token
