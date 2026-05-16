@@ -1,2 +1,4 @@
--r requirements_dev.txt
+pytest
+pytest-asyncio
 pytest-homeassistant-custom-component
+respx
