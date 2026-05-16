@@ -45,12 +45,14 @@ to. In practice, **only Porsche Connect–equipped vehicles (typically MY 2021+)
 report data** — older cars may authenticate against the account but expose
 empty `commands` / `measurements` payloads.
 
-- **Taycan** (BEV)
-- **Macan EV**
-- **Cayenne** (PHEV / ICE, E3 generation, 2017+)
-- **Panamera** (PHEV / ICE, G2 PA, 2021+)
-- **911** (ICE, 992 generation)
-- **718 Boxster / Cayman** (ICE)
+| Model              | Drivetrain | Connect entities | Charging entities | Climatisation | Lock | Location |
+| ------------------ | ---------- | ---------------- | ----------------- | ------------- | ---- | -------- |
+| Taycan             | BEV        | Yes              | Yes               | Yes           | Yes  | Yes      |
+| Macan EV           | BEV        | Yes              | Yes               | Yes           | Yes  | Yes      |
+| Cayenne (E3)       | PHEV / ICE | Yes              | PHEV only         | PHEV only     | Yes  | Yes      |
+| Panamera (G2 PA)   | PHEV / ICE | Yes              | PHEV only         | PHEV only     | Yes  | Yes      |
+| 911 (992)          | ICE        | Yes              | No                | No            | Yes  | Yes      |
+| 718 Boxster/Cayman | ICE        | Yes              | No                | No            | Yes  | Yes      |
 
 ICE-only cars naturally do not expose state-of-charge, charging or
 electric-range entities. PHEVs expose both fuel-level and battery sensors.
@@ -61,7 +63,39 @@ To verify your specific model and equipment, see
 
 ## Supported entities and capabilities
 
-Detailed matrix to be added in a follow-up commit.
+Each entity is gated on a capability flag exposed by the vehicle object so the
+integration only creates entities that the car can actually drive.
+
+| Platform        | Entity / key                                                       | Capability gate                                          |
+| --------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
+| `sensor`        | `state_of_charge`                                                  | `has_electric_drivetrain`                                |
+| `sensor`        | `charging_target`                                                  | `has_electric_drivetrain`                                |
+| `sensor`        | `charging_status`                                                  | `has_electric_drivetrain`                                |
+| `sensor`        | `charging_rate`                                                    | `has_electric_drivetrain`                                |
+| `sensor`        | `charging_power`                                                   | `has_electric_drivetrain`                                |
+| `sensor`        | `charging_finished`                                                | `has_electric_drivetrain`                                |
+| `sensor`        | `remaining_range_electric`                                         | `has_electric_drivetrain`                                |
+| `sensor`        | `mileage`                                                          | `has_porsche_connect` (default)                          |
+| `sensor`        | `remaining_range`                                                  | `has_ice_drivetrain`                                     |
+| `sensor`        | `fuel_level`                                                       | `has_ice_drivetrain`                                     |
+| `binary_sensor` | `parking_brake`                                                    | `has_porsche_connect`                                    |
+| `binary_sensor` | `parking_light`                                                    | `has_porsche_connect`                                    |
+| `binary_sensor` | `privacy_mode`                                                     | `has_porsche_connect`                                    |
+| `binary_sensor` | `remote_access`                                                    | `has_porsche_connect`                                    |
+| `binary_sensor` | `doors_and_lids`                                                   | `has_porsche_connect`                                    |
+| `binary_sensor` | `tire_pressure_status`                                             | `has_tire_pressure_monitoring`                           |
+| `device_tracker`| Vehicle location                                                   | `has_porsche_connect` and `privacy_mode == false`        |
+| `image`         | `front_view`, `side_view`, `rear_view`, `rear_top_view`, `top_view`| Pictures returned by the API                             |
+| `lock`          | Door lock                                                          | `has_porsche_connect` (unlock needs S-PIN)               |
+| `switch`        | `climatise`                                                        | `has_remote_climatisation` and `has_remote_services`     |
+| `switch`        | `direct_charging`                                                  | `has_direct_charge` and `has_remote_services`            |
+| `number`        | `target_soc` (25–100 %, step 5)                                    | `has_electric_drivetrain` and `has_remote_services`      |
+| `button`        | `flash_indicators`                                                 | `has_remote_services`                                    |
+| `button`        | `honk_and_flash_indicators`                                        | `has_remote_services`                                    |
+| `button`        | `get_current_overview`                                             | `has_remote_services` (forces a fresh pull from the car) |
+
+The privacy mode flag is honoured by the vehicle itself — when the driver
+enables privacy in the PCM, the `device_tracker` entity is not created.
 
 ## Installation
 
