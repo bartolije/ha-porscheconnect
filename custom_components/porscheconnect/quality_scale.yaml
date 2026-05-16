@@ -18,13 +18,17 @@ rules:
   config-flow: done
   dependency-transparency: done
   docs-actions:
-    status: todo
-    comment: README documents the service action briefly; full docs forthcoming.
+    status: done
+    comment: |
+      README "Services / Actions" section documents climatisation_start
+      parameters, dynamic zone behaviour (#292), and example calls.
   docs-high-level-description: done
   docs-installation-instructions: done
   docs-removal-instructions:
-    status: todo
-    comment: README does not yet describe the removal procedure.
+    status: done
+    comment: |
+      README "Removal" section: HA UI → Devices → Porsche Connect → Delete,
+      plus optional OAuth grant revocation and HACS uninstall.
   entity-event-setup: done
   entity-unique-id:
     status: done
@@ -106,13 +110,36 @@ rules:
   discovery:
     status: exempt
     comment: Cloud-polling integration, no local discovery.
-  docs-data-update: todo
-  docs-examples: todo
-  docs-known-limitations: todo
-  docs-supported-devices: todo
-  docs-supported-functions: todo
-  docs-troubleshooting: todo
-  docs-use-cases: todo
+  docs-data-update:
+    status: done
+    comment: README "Polling and data updates" — 1920 s tick + extra refresh triggers.
+  docs-examples:
+    status: done
+    comment: |
+      README "Examples" section: Lovelace card + 4 automation recipes
+      (pre-heat, door-open alert, charging logbook, geofence arrival).
+  docs-known-limitations:
+    status: done
+    comment: |
+      README "Known limitations": subscription required, charging-profile
+      target-SoC bug (#319), no Car Connect support, captcha at first login,
+      PCM pairing requirement, no 2FA, no push notifications.
+  docs-supported-devices:
+    status: done
+    comment: README "Supported vehicles" — per-model capability matrix.
+  docs-supported-functions:
+    status: done
+    comment: |
+      README "Supported entities and capabilities" — 27-row table mapping
+      each entity to its underlying capability gate.
+  docs-troubleshooting:
+    status: done
+    comment: |
+      README "Troubleshooting": captcha, empty payload / PCM pairing,
+      reauth, unlock S-PIN, missing vehicle, debug logger recipe.
+  docs-use-cases:
+    status: done
+    comment: README "Examples" doubles as use-cases (4 worked automations).
   dynamic-devices:
     status: done
     comment: |
