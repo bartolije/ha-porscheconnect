@@ -13,6 +13,7 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.httpx_client import get_async_client
@@ -25,6 +26,7 @@ from homeassistant.helpers.update_coordinator import (
 from pyporscheconnectapi.account import PorscheConnectAccount
 from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
+    PorscheCaptchaRequiredError,
     PorscheExceptionError,
     PorscheWrongCredentialsError,
 )
@@ -43,10 +45,17 @@ _API_ERROR_MSG = "Error communicating with Porsche Connect API"
 # Type alias for the runtime data attached to each config entry.
 PorscheConnectConfigEntry = ConfigEntry["PorscheConnectDataUpdateCoordinator"]
 
+# This integration is configured exclusively through the UI config flow and has
+# no YAML configuration; declaring this satisfies the hassfest CONFIG_SCHEMA
+# check for integrations that implement async_setup.
+CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
+
 
 def _is_auth_error(exc: PorscheExceptionError) -> bool:
     """Return True if the API error should trigger a reauth flow."""
-    if isinstance(exc, PorscheWrongCredentialsError):
+    # A captcha challenge can only be answered through the (re)auth flow, so a
+    # captcha required mid-polling must surface as a reauth, not a plain retry.
+    if isinstance(exc, (PorscheWrongCredentialsError, PorscheCaptchaRequiredError)):
         return True
     return getattr(exc, "code", None) == HTTP_UNAUTHORIZED
 
@@ -155,7 +164,6 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.controller = controller
         self.vehicles = []
         self.hass = hass
-        self.config_entry = config_entry
 
         scan_interval = timedelta(
             seconds=config_entry.options.get(
@@ -167,7 +175,13 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             ),
         )
 
-        super().__init__(hass, _LOGGER, name=DOMAIN, update_interval=scan_interval)
+        super().__init__(
+            hass,
+            _LOGGER,
+            name=DOMAIN,
+            update_interval=scan_interval,
+            config_entry=config_entry,
+        )
 
     def get_vehicle_data_leaf(self, vehicle, node, leaf):
         """Get data value leaf from dict."""
@@ -252,9 +266,7 @@ async def async_reload_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> None:
     """Reload config entry."""
-    _LOGGER.info("Reloading config entry: %s", entry)
-    await async_unload_entry(hass, entry)
-    await async_setup_entry(hass, entry)
+    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_config_entry_device(

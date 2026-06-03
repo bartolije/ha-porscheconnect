@@ -9,6 +9,7 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.update_coordinator import UpdateFailed
 from pyporscheconnectapi.exceptions import (
+    PorscheCaptchaRequiredError,
     PorscheExceptionError,
     PorscheWrongCredentialsError,
 )
@@ -127,3 +128,42 @@ async def test_coordinator_persists_token_only_when_changed(
         with patch("custom_components.porscheconnect._async_save_token") as save:
             await coordinator._async_update_data()
             save.assert_called_once()
+
+
+async def test_coordinator_captcha_required_triggers_reauth(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+) -> None:
+    """A captcha required during polling surfaces as ConfigEntryAuthFailed.
+
+    A captcha can only be answered through the reauth flow, so it must trigger
+    reauth rather than a silent UpdateFailed retry.
+    """
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    mock_config_entry.add_to_hass(hass)
+
+    account = MagicMock()
+    account.token = {}
+    account.get_vehicles = AsyncMock(return_value=[mock_vehicle])
+
+    with (
+        patch(
+            "custom_components.porscheconnect.PorscheConnectAccount",
+            return_value=account,
+        ),
+        patch("custom_components.porscheconnect.Connection", return_value=MagicMock()),
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+        coordinator = mock_config_entry.runtime_data
+        mock_vehicle.get_stored_overview = AsyncMock(
+            side_effect=PorscheCaptchaRequiredError(
+                captcha="data:image/svg+xml;base64,x", state="ST",
+            ),
+        )
+
+        with pytest.raises(ConfigEntryAuthFailed):
+            await coordinator._async_update_data()
