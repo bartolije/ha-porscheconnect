@@ -88,7 +88,7 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         pin = kwargs.get("code")
 
         if pin is None:
-            lock_options = self.registry_entry.options.get(LOCK_DOMAIN)
+            lock_options = self.registry_entry.options.get(LOCK_DOMAIN) or {}
             pin = lock_options.get(CONF_DEFAULT_CODE)
 
         if pin:
