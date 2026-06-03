@@ -133,7 +133,11 @@ async def async_setup_entry(
         list(PLATFORMS),
     )
 
-    _async_save_token(hass, entry, controller.token)
+    # Deep-copy so the persisted snapshot is decoupled from the live token the
+    # coordinator keeps mutating in place — otherwise the change-detection in
+    # _async_update_data can never see a difference and would stop persisting
+    # rotated tokens.
+    _async_save_token(hass, entry, copy.deepcopy(controller.token))
 
     # Track that this entry is using our domain-global services so that the
     # last unload can release them. We keep this in hass.data only as a small
@@ -181,7 +185,15 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
                 for vehicle in self.vehicles:
                     await vehicle.get_stored_overview()
-                    await vehicle.get_picture_locations()
+                    # Pictures are cosmetic — a failure here must not abort
+                    # setup or a refresh cycle (the lib now propagates errors).
+                    try:
+                        await vehicle.get_picture_locations()
+                    except PorscheExceptionError as exc:
+                        _LOGGER.debug(
+                            "Could not fetch picture locations for %s: %s",
+                            vehicle.vin, exc,
+                        )
 
             else:
                 async with async_timeout.timeout(30):
@@ -198,13 +210,17 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             msg = f"Error communicating with API: {exc}"
             raise UpdateFailed(msg) from exc
         else:
-            accesstoken = copy.deepcopy(self.controller.token)
-
-            _async_save_token(
-                hass=self.hass,
-                config_entry=self.config_entry,
-                access_token=accesstoken,
-            )
+            # Only persist the token when it actually changed — the refresh
+            # rotates it occasionally, but most cycles reuse the same one and an
+            # unconditional write churns the config entry storage every poll.
+            current_token = self.controller.token
+            stored_token = self.config_entry.data.get(CONF_ACCESS_TOKEN)
+            if current_token and current_token != stored_token:
+                _async_save_token(
+                    hass=self.hass,
+                    config_entry=self.config_entry,
+                    access_token=copy.deepcopy(current_token),
+                )
             return {}
 
 
@@ -285,8 +301,8 @@ class PorscheBaseEntity(CoordinatorEntity):
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._vin)},
-            name=vehicle.data["name"],
-            model=vehicle.data["modelName"],
+            name=vehicle.data.get("name") or vehicle.model_name,
+            model=vehicle.data.get("modelName"),
             manufacturer="Porsche",
             serial_number=self._vin,
         )
