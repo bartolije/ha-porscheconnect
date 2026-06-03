@@ -183,6 +183,27 @@
       },
       "tire_pressure_rear_right": {
         "name": "Tire pressure deviation (rear right)"
+      },
+      "fuel_reserve": {
+        "name": "Fuel reserve"
+      },
+      "main_service_distance": {
+        "name": "Distance to service"
+      },
+      "main_service_time": {
+        "name": "Time to service"
+      },
+      "oil_service_distance": {
+        "name": "Distance to oil service"
+      },
+      "oil_service_time": {
+        "name": "Time to oil service"
+      },
+      "intermediate_service_distance": {
+        "name": "Distance to intermediate service"
+      },
+      "intermediate_service_time": {
+        "name": "Time to intermediate service"
       }
     },
     "number": {

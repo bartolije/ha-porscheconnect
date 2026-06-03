@@ -18,6 +18,7 @@ from homeassistant.const import (
     UnitOfPower,
     UnitOfPressure,
     UnitOfSpeed,
+    UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity import EntityCategory
@@ -182,6 +183,21 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         suggested_display_precision=0,
         is_available=lambda v: v.has_ice_drivetrain,
     ),
+    PorscheSensorEntityDescription(
+        # The fuel level at which the low-fuel reserve warning trips. Static
+        # per vehicle, so diagnostic + disabled by default.
+        key="fuel_reserve",
+        translation_key="fuel_reserve",
+        measurement_node="FUEL_RESERVE",
+        measurement_leaf="percent",
+        icon="mdi:gas-station-outline",
+        native_unit_of_measurement=PERCENTAGE,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        entity_registry_enabled_default=False,
+        is_available=lambda v: "FUEL_RESERVE" in v.data,
+    ),
     # Per-tire pressure deviation (signed bar, +/- vs OEM target).
     # Diagnostic + disabled by default so the default dashboard keeps a
     # single tire_pressure_status flag; enthusiasts can flip them on.
@@ -234,6 +250,73 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         is_available=lambda v: v.has_tire_pressure_monitoring,
     ),
 ]
+
+
+# Service-interval sensors. The API reports up to three service types
+# (MAIN / OIL / INTERMEDIATE), each as a remaining distance (km) and a
+# remaining time (days). They're gated on the measurement being present so
+# they never surface "Unknown" on a vehicle that doesn't report a given
+# type; the main service is enabled by default, the rest opt-in.
+@dataclass(frozen=True)
+class _ServiceType:
+    """Display config for one service-interval type (distance + time)."""
+
+    api_prefix: str  # API node prefix, e.g. "MAIN" -> MAIN_SERVICE_RANGE/TIME
+    key_prefix: str  # HA entity key prefix, e.g. "main_service"
+    enabled_by_default: bool
+
+
+_SERVICE_TYPES: list[_ServiceType] = [
+    _ServiceType("MAIN", "main_service", enabled_by_default=True),
+    _ServiceType("OIL", "oil_service", enabled_by_default=False),
+    _ServiceType("INTERMEDIATE", "intermediate_service", enabled_by_default=False),
+]
+
+
+def _service_descriptions() -> list[PorscheSensorEntityDescription]:
+    """Materialise the distance/time service-interval sensor descriptions."""
+    descriptions: list[PorscheSensorEntityDescription] = []
+    for service in _SERVICE_TYPES:
+        key_prefix = service.key_prefix
+        enabled = service.enabled_by_default
+        range_node = f"{service.api_prefix}_SERVICE_RANGE"
+        time_node = f"{service.api_prefix}_SERVICE_TIME"
+        descriptions.append(
+            PorscheSensorEntityDescription(
+                key=f"{key_prefix}_distance",
+                translation_key=f"{key_prefix}_distance",
+                measurement_node=range_node,
+                measurement_leaf="kilometers",
+                icon="mdi:car-wrench",
+                device_class=SensorDeviceClass.DISTANCE,
+                native_unit_of_measurement=UnitOfLength.KILOMETERS,
+                state_class=SensorStateClass.MEASUREMENT,
+                suggested_display_precision=0,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                entity_registry_enabled_default=enabled,
+                is_available=lambda v, _n=range_node: _n in v.data,
+            ),
+        )
+        descriptions.append(
+            PorscheSensorEntityDescription(
+                key=f"{key_prefix}_time",
+                translation_key=f"{key_prefix}_time",
+                measurement_node=time_node,
+                measurement_leaf="days",
+                icon="mdi:wrench-clock",
+                device_class=SensorDeviceClass.DURATION,
+                native_unit_of_measurement=UnitOfTime.DAYS,
+                state_class=SensorStateClass.MEASUREMENT,
+                suggested_display_precision=0,
+                entity_category=EntityCategory.DIAGNOSTIC,
+                entity_registry_enabled_default=enabled,
+                is_available=lambda v, _n=time_node: _n in v.data,
+            ),
+        )
+    return descriptions
+
+
+SENSOR_TYPES.extend(_service_descriptions())
 
 
 async def async_setup_entry(

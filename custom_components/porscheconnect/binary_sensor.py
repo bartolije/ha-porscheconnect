@@ -51,6 +51,11 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         device_class=None,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
+        # Capability gate: the API drops this measurement (NOT_SUPPORTED) on
+        # vehicles that don't offer it (e.g. most combustion cars), which
+        # otherwise surfaces a permanent "Unknown" entity. Mirror the
+        # OPEN_STATE_* gate: no key in data == not available.
+        is_available=lambda v: "REMOTE_ACCESS_AUTHORIZATION" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
         name="Privacy mode",
@@ -68,6 +73,8 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         measurement_node="PARKING_BRAKE",
         measurement_leaf="isOn",
         device_class=None,
+        # Capability gate — see remote_access above.
+        is_available=lambda v: "PARKING_BRAKE" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
         name="Parking light",
@@ -76,6 +83,8 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         measurement_node="PARKING_LIGHT",
         measurement_leaf="isOn",
         device_class=BinarySensorDeviceClass.LIGHT,
+        # Capability gate — see remote_access above.
+        is_available=lambda v: "PARKING_LIGHT" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
         name="Doors and lids",
