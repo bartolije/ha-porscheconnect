@@ -56,13 +56,11 @@ async def test_coordinator_auth_failure_triggers_reauth(
     mock_config_entry: MockConfigEntry,
     mock_vehicle,
 ) -> None:
-    """A PorscheWrongCredentialsError during update should trigger reauth.
+    """A PorscheWrongCredentialsError during update triggers reauth.
 
-    Once the parallel structural fix is merged, the coordinator catches
-    `PorscheWrongCredentialsError` separately and re-raises it as
-    `ConfigEntryAuthFailed`, which Home Assistant's update mechanism turns
-    into a reauth flow. Until then this test will fail (the error becomes
-    a generic UpdateFailed) — that is the intended signal.
+    The coordinator catches `PorscheWrongCredentialsError` separately and
+    re-raises it as `ConfigEntryAuthFailed`, which Home Assistant turns into
+    a reauth flow.
     """
     from homeassistant.exceptions import ConfigEntryAuthFailed
 
@@ -87,5 +85,45 @@ async def test_coordinator_auth_failure_triggers_reauth(
             side_effect=PorscheWrongCredentialsError("401"),
         )
 
-        with pytest.raises((ConfigEntryAuthFailed, UpdateFailed)):
+        with pytest.raises(ConfigEntryAuthFailed):
             await coordinator._async_update_data()
+
+
+async def test_coordinator_persists_token_only_when_changed(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+) -> None:
+    """The token is re-persisted only when it differs from the stored one.
+
+    Guards the change-detection in _async_update_data: the setup-time save
+    snapshots the token (deep copy), so an unchanged token must not rewrite
+    the entry, while a rotated token must.
+    """
+    mock_config_entry.add_to_hass(hass)
+
+    account = MagicMock()
+    account.token = {"access_token": "abc123", "expires_in": 3600}
+    account.get_vehicles = AsyncMock(return_value=[mock_vehicle])
+
+    with (
+        patch(
+            "custom_components.porscheconnect.PorscheConnectAccount",
+            return_value=account,
+        ),
+        patch("custom_components.porscheconnect.Connection", return_value=MagicMock()),
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+        coordinator = mock_config_entry.runtime_data
+
+        # Token unchanged since setup → no rewrite.
+        with patch("custom_components.porscheconnect._async_save_token") as save:
+            await coordinator._async_update_data()
+            save.assert_not_called()
+
+        # Token rotated → persisted exactly once.
+        account.token = {"access_token": "rotated", "expires_in": 3600}
+        with patch("custom_components.porscheconnect._async_save_token") as save:
+            await coordinator._async_update_data()
+            save.assert_called_once()

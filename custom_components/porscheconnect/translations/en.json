@@ -230,7 +230,7 @@
       "message": "Remote climatisation is not supported by vehicle {vehicle}."
     },
     "climate_zone_not_supported": {
-      "message": "Climate zone '{zone}' is not available on vehicle {vehicle}. Remove this option from the service call."
+      "message": "Climate zone {zone} is not available on vehicle {vehicle}. Remove this option from the service call."
     },
     "invalid_device_id": {
       "message": "No device with id {device_id} is registered with Home Assistant."
@@ -239,7 +239,7 @@
       "message": "Device {device_id} is not associated with a loaded Porsche Connect config entry."
     },
     "remote_service_failed": {
-      "message": "Remote service '{service}' failed for vehicle {vin}: {error}"
+      "message": "Remote service {service} failed for vehicle {vin}: {error}"
     },
     "lock_failed": {
       "message": "Failed to lock vehicle {vin}: {error}"
