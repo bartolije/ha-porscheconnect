@@ -46,7 +46,8 @@ async def validate_input(data):
             token=token,
         )
     except PorscheExceptionError as exc:
-        _LOGGER.debug("Exception %s", exc)
+        _LOGGER.debug("Could not create connection: %s", exc)
+        raise InvalidAuth from exc
 
     _LOGGER.debug("Attempting login")
     try:
@@ -275,16 +276,20 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self,
     ) -> ConfigFlowResult:
         """Captcha verification form."""
-        # We edit the SVG for better visibility
-
-        (header, payload) = self.captcha.split(",")
-        svg = base64.b64decode(payload)
-        svg = svg.replace(
-            b'width="150" height="50"',
-            b'width="300" height="100" style="background-color:white"',
-        )
-        payload = base64.b64encode(svg)
-        self.captcha = header + "," + payload.decode("ascii")
+        # Best-effort upscaling of the Auth0 SVG captcha for readability. It is
+        # normally a "data:image/svg+xml;base64,<payload>" data URI, but
+        # tolerate other shapes (PNG/ACUL, plain URL) instead of crashing.
+        if isinstance(self.captcha, str) and "," in self.captcha:
+            header, payload = self.captcha.split(",", 1)
+            try:
+                svg = base64.b64decode(payload)
+                svg = svg.replace(
+                    b'width="150" height="50"',
+                    b'width="300" height="100" style="background-color:white"',
+                )
+                self.captcha = header + "," + base64.b64encode(svg).decode("ascii")
+            except ValueError:
+                pass  # not base64 — leave the captcha source untouched
 
         return self.async_show_form(
             step_id="captcha",
