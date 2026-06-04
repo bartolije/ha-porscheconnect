@@ -17,6 +17,7 @@ PLATFORMS = [
     "button",
     "lock",
     "image",
+    "climate",
 ]
 
 STARTUP_MESSAGE = f"""
