@@ -91,3 +91,15 @@ async def test_press_maps_api_error_to_home_assistant_error():
 
     # On error the coordinator must not be asked to refresh.
     coord.async_update_listeners.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_press_honk_and_flash_invokes_remote_service_and_refresh():
+    coord = MagicMock()
+    vehicle = _vehicle()
+    button = _make(coord, vehicle, "honk_and_flash_indicators")
+
+    await button.async_press()
+
+    vehicle.remote_services.honk_and_flash_indicators.assert_awaited_once()
+    coord.async_update_listeners.assert_called_once()

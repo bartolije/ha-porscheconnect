@@ -101,6 +101,27 @@ async def test_lock_maps_api_error_to_home_assistant_error():
     with pytest.raises(HomeAssistantError):
         await lock.async_lock()
 
+    # The error path clears the optimistic state before writing it.
+    assert lock.is_locked is None
     lock.async_write_ha_state.assert_called_once()
     # The finally block still refreshes listeners.
+    coord.async_update_listeners.assert_called_once()
+
+
+@pytest.mark.asyncio
+async def test_unlock_with_default_pin_from_registry():
+    """A default lock code configured on the entity is used when no code is passed."""
+    from homeassistant.components.lock import CONF_DEFAULT_CODE
+    from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
+
+    coord = MagicMock()
+    vehicle = _vehicle()
+    lock = _make(coord, vehicle)
+    lock.registry_entry = SimpleNamespace(
+        options={LOCK_DOMAIN: {CONF_DEFAULT_CODE: "4321"}},
+    )
+
+    await lock.async_unlock()
+
+    vehicle.remote_services.unlock_vehicle.assert_awaited_once_with("4321")
     coord.async_update_listeners.assert_called_once()

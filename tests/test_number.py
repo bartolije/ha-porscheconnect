@@ -90,3 +90,16 @@ async def test_set_native_value_maps_api_error_to_home_assistant_error():
         await number.async_set_native_value(70.0)
 
     coord.async_update_listeners.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_set_native_value_coerces_float_to_int():
+    """A fractional slider value is coerced to int before hitting the API."""
+    coord = MagicMock()
+    vehicle = _vehicle()
+    number = _make(coord, vehicle, "target_soc")
+
+    await number.async_set_native_value(70.5)
+
+    # int(70.5) == 70 — would fail if the production int() coercion were dropped.
+    vehicle.remote_services.set_target_soc.assert_awaited_once_with(target_soc=70)

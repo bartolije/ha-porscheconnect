@@ -1,9 +1,9 @@
-"""Unit tests for the Porsche Connect services helpers.
+"""Unit tests for the Porsche Connect services.
 
-The full service handlers need a hass instance and a device registry, which is
-out of scope for a direct unit test. This file exercises the pure helper
-`_resolve_climate_zone_kwargs` in isolation (issue #292 zone filtering) using a
-lightweight vehicle stand-in — no hass setup.
+Covers the pure helper `_resolve_climate_zone_kwargs` (issue #292 zone
+filtering) in isolation, plus a full-setup integration test of the
+`climatisation_start` handler verifying the device→vehicle resolution and the
+Celsius→Kelvin temperature conversion.
 """
 from __future__ import annotations
 
@@ -61,3 +61,41 @@ def test_zone_not_requested_is_omitted():
     assert kwargs == {ATTR_FRONT_LEFT: True}
     assert ATTR_REAR_RIGHT not in kwargs
     assert ATTR_FRONT_RIGHT not in kwargs
+
+
+@pytest.mark.asyncio
+async def test_climatisation_start_service_converts_celsius_to_kelvin(
+    hass,
+    mock_config_entry,
+    mock_vehicle,
+    mock_account_cls,
+    mock_connection_cls,
+):
+    """climatisation_start resolves the device to its vehicle and forwards the
+    target temperature converted from Celsius to Kelvin.
+    """
+    from homeassistant.helpers import device_registry as dr
+
+    from custom_components.porscheconnect.const import DOMAIN
+
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    device = next(
+        d
+        for d in dr.async_get(hass).devices.values()
+        if (DOMAIN, mock_vehicle.vin) in d.identifiers
+    )
+
+    await hass.services.async_call(
+        DOMAIN,
+        "climatisation_start",
+        {"vehicle": device.id, "temperature": 21.0},
+        blocking=True,
+    )
+
+    mock_vehicle.remote_services.climatise_on.assert_awaited_once()
+    kwargs = mock_vehicle.remote_services.climatise_on.await_args.kwargs
+    # 21 °C + 273.15 = 294.15 K — proves the conversion (not the 293.15 default).
+    assert kwargs["target_temperature"] == pytest.approx(294.15)

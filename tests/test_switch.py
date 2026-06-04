@@ -96,3 +96,18 @@ async def test_turn_on_maps_api_error_to_home_assistant_error():
 
     with pytest.raises(HomeAssistantError):
         await switch.async_turn_on()
+
+
+@pytest.mark.asyncio
+async def test_climatise_turn_on_off_invoke_remote_service():
+    coord = MagicMock()
+    vehicle = _vehicle()
+    switch = _make(coord, vehicle, "climatise")
+
+    await switch.async_turn_on()
+    vehicle.remote_services.climatise_on.assert_awaited_once()
+
+    await switch.async_turn_off()
+    vehicle.remote_services.climatise_off.assert_awaited_once()
+
+    assert coord.async_update_listeners.call_count == 2
