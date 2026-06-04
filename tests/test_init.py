@@ -110,3 +110,34 @@ async def test_async_unload_entry(
     assert mock_config_entry.state is ConfigEntryState.NOT_LOADED
     # runtime_data is cleared by HA once the entry is unloaded.
     assert getattr(mock_config_entry, "runtime_data", None) is None
+
+
+async def test_unique_id_migration_renames_name_keyed_entities(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """An old ``{name}-{key}`` unique_id is migrated to ``{vin}-{key}`` on setup.
+
+    Older releases keyed entities off the vehicle name; the migration rewrites
+    the registry so an upgrade reuses the entity instead of orphaning it.
+    """
+    from homeassistant.helpers import entity_registry as er
+
+    mock_config_entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    old = ent_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{mock_vehicle.data['name']}-mileage",
+        config_entry=mock_config_entry,
+    )
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    migrated = ent_reg.async_get(old.entity_id)
+    assert migrated is not None
+    assert migrated.unique_id == f"{mock_vehicle.vin}-mileage"

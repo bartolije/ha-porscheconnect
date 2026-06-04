@@ -5,11 +5,10 @@
 [![License][license-shield]](LICENSE)
 
 [![pre-commit][pre-commit-shield]][pre-commit]
-[![Black][black-shield]][black]
+[![Ruff][ruff-shield]][ruff]
 
 [![hacs][hacs_badge]][hacs]
 [![Project Maintenance][maintenance-shield]][user_profile]
-[![BuyMeCoffee][buymecoffeebadge]][buymecoffee]
 
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
@@ -388,8 +387,6 @@ log slice to the GitHub issue.
   upstream for the fix.
 - **No push updates.** The integration polls every 32 minutes by default; for
   near-real-time data, use the *Get current vehicle information* button.
-- **No diagnostics platform yet.** Bug reports must rely on the debug log
-  recipe above.
 
 ## Removal
 
@@ -411,34 +408,32 @@ To fully uninstall:
 ## Contributing / Development
 
 Bug reports and feature requests are welcome on the
-[GitHub issue tracker](https://github.com/CJNE/ha-porscheconnect/issues).
+[GitHub issue tracker](https://github.com/bartolije/ha-porscheconnect/issues).
 General usage questions go to
-[Discussions](https://github.com/CJNE/ha-porscheconnect/discussions),
+[Discussions](https://github.com/bartolije/ha-porscheconnect/discussions),
 the [HA Community Forum][forum], or [Discord][discord].
 
 If you want to contribute code, read
-[CONTRIBUTING.md](https://github.com/CJNE/ha-porscheconnect/blob/main/CONTRIBUTING.md)
+[CONTRIBUTING.md](https://github.com/bartolije/ha-porscheconnect/blob/main/CONTRIBUTING.md)
 first — it covers the dev container, pre-commit hooks, and the test layout.
 
 ---
 
 [integration_blueprint]: https://github.com/custom-components/integration_blueprint
-[black]: https://github.com/psf/black
-[black-shield]: https://img.shields.io/badge/code%20style-black-000000.svg?style=for-the-badge
-[buymecoffee]: https://www.buymeacoffee.com/cjne.coffee
-[buymecoffeebadge]: https://img.shields.io/badge/buy%20me%20a%20coffee-donate-yellow.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/CJNE/ha-porscheconnect.svg?style=for-the-badge
-[commits]: https://github.com/CJNE/ha-porscheconnect/commits/main
+[ruff]: https://github.com/astral-sh/ruff
+[ruff-shield]: https://img.shields.io/badge/code%20style-ruff-261230.svg?style=for-the-badge
+[commits-shield]: https://img.shields.io/github/commit-activity/y/bartolije/ha-porscheconnect.svg?style=for-the-badge
+[commits]: https://github.com/bartolije/ha-porscheconnect/commits/main
 [hacs]: https://hacs.xyz
-[hacs_badge]: https://img.shields.io/badge/HACS-Default-41BDF5.svg?style=for-the-badge
+[hacs_badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge
 [discord]: https://discord.gg/Qa5fW2R
 [discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
 [forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
 [forum]: https://community.home-assistant.io/
-[license-shield]: https://img.shields.io/github/license/CJNE/ha-porscheconnect.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/badge/maintainer-%40CJNE-blue.svg?style=for-the-badge
+[license-shield]: https://img.shields.io/github/license/bartolije/ha-porscheconnect.svg?style=for-the-badge
+[maintenance-shield]: https://img.shields.io/badge/maintainer-%40bartolije-blue.svg?style=for-the-badge
 [pre-commit]: https://github.com/pre-commit/pre-commit
 [pre-commit-shield]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?style=for-the-badge
-[releases-shield]: https://img.shields.io/github/release/CJNE/ha-porscheconnect.svg?style=for-the-badge
-[releases]: https://github.com/CJNE/ha-porscheconnect/releases
-[user_profile]: https://github.com/CJNE
+[releases-shield]: https://img.shields.io/github/release/bartolije/ha-porscheconnect.svg?style=for-the-badge
+[releases]: https://github.com/bartolije/ha-porscheconnect/releases
+[user_profile]: https://github.com/bartolije

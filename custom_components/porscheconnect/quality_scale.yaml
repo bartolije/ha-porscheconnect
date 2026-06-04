@@ -93,7 +93,9 @@ rules:
       the user into ``async_step_reauth``.
   test-coverage:
     status: done
-    comment: Coordinator + setup/unload + auth paths covered (11 tests).
+    comment: |
+      Coordinator, setup/unload, auth/reauth, config flow, unique-id
+      migration, and per-platform action tests (60+ tests).
 
   # Gold (declared here so review tooling sees explicit positions)
   devices: done

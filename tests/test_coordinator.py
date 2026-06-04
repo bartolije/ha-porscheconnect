@@ -167,3 +167,36 @@ async def test_coordinator_captcha_required_triggers_reauth(
 
         with pytest.raises(ConfigEntryAuthFailed):
             await coordinator._async_update_data()
+
+
+async def test_picture_locations_retried_when_empty(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+) -> None:
+    """A periodic refresh retries get_picture_locations while it stays empty.
+
+    Guards against losing the image entities when the one-shot fetch at setup
+    fails: picture_locations never populates here, so each refresh retries.
+    """
+    mock_config_entry.add_to_hass(hass)
+
+    account = MagicMock()
+    account.token = {}
+    account.get_vehicles = AsyncMock(return_value=[mock_vehicle])
+
+    with (
+        patch(
+            "custom_components.porscheconnect.PorscheConnectAccount",
+            return_value=account,
+        ),
+        patch("custom_components.porscheconnect.Connection", return_value=MagicMock()),
+    ):
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+        coordinator = mock_config_entry.runtime_data
+        mock_vehicle.get_picture_locations.reset_mock()
+        await coordinator._async_update_data()
+
+        mock_vehicle.get_picture_locations.assert_awaited()
