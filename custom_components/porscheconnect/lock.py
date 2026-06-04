@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+from typing import Any
 
 from homeassistant.components.lock import CONF_DEFAULT_CODE, LockEntity
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
@@ -65,7 +66,7 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         self._attr_unique_id = f"{self._vin}-lock"
         self.door_lock_state_available = vehicle.has_remote_services
 
-    async def async_lock(self) -> None:
+    async def async_lock(self, **kwargs: Any) -> None:
         """Lock the vehicle."""
         try:
             await self.vehicle.remote_services.lock_vehicle()

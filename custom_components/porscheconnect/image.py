@@ -125,7 +125,7 @@ class PorscheImage(PorscheBaseEntity, ImageEntity):
         self._attr_unique_id = f"{self._vin}-{description.key}"
         self._attr_image_url = vehicle.picture_locations[description.view]
 
-    async def async_added_to_hass(self):
+    async def async_added_to_hass(self) -> None:
         """Set the update time."""
         self._attr_image_last_updated = dt_util.utcnow()
 
