@@ -1,12 +1,12 @@
 {
   "domain": "porscheconnect",
   "name": "Porsche Connect",
-  "codeowners": ["@cjne"],
+  "codeowners": ["@bartolije"],
   "config_flow": true,
   "dependencies": [],
-  "documentation": "https://github.com/CJNE/ha-porscheconnect",
+  "documentation": "https://github.com/bartolije/ha-porscheconnect",
   "iot_class": "cloud_polling",
-  "issue_tracker": "https://github.com/CJNE/ha-porscheconnect/issues",
+  "issue_tracker": "https://github.com/bartolije/ha-porscheconnect/issues",
   "quality_scale": "gold",
   "requirements": ["pyporscheconnectapi-bartolije==0.3.1"],
   "version": "0.2.2"
