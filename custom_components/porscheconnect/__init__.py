@@ -15,6 +15,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
 from homeassistant.helpers.httpx_client import get_async_client
 from homeassistant.helpers.typing import ConfigType
@@ -97,6 +98,36 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     return True
 
 
+async def _async_migrate_entity_unique_ids(
+    hass: HomeAssistant,
+    entry: PorscheConnectConfigEntry,
+    vehicles: list[PorscheVehicle],
+) -> None:
+    """Migrate pre-VIN unique_ids (``{name}-{key}``) to the VIN scheme.
+
+    Older releases keyed entities off the (mutable) vehicle name; entities are
+    now keyed off the immutable VIN. Rewrite the registry in place so an upgrade
+    reuses the existing entities instead of orphaning them as duplicates.
+    """
+    prefixes = [
+        (f"{vehicle.data['name']}-", f"{vehicle.vin}-")
+        for vehicle in vehicles
+        if vehicle.data.get("name") and vehicle.vin
+    ]
+    if not prefixes:
+        return
+
+    @callback
+    def _migrate(entity_entry: er.RegistryEntry) -> dict[str, str] | None:
+        for old_prefix, new_prefix in prefixes:
+            if entity_entry.unique_id.startswith(old_prefix):
+                suffix = entity_entry.unique_id[len(old_prefix):]
+                return {"new_unique_id": f"{new_prefix}{suffix}"}
+        return None
+
+    await er.async_migrate_entries(hass, entry.entry_id, _migrate)
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> bool:
@@ -136,6 +167,11 @@ async def async_setup_entry(
         raise ConfigEntryNotReady(msg) from exc
 
     entry.runtime_data = coordinator
+
+    # Migrate pre-VIN unique_ids before the platforms create entities, so an
+    # upgrade from an older version reuses existing entities instead of
+    # orphaning them as duplicates.
+    await _async_migrate_entity_unique_ids(hass, entry, coordinator.vehicles)
 
     await hass.config_entries.async_forward_entry_setups(
         entry,
@@ -191,6 +227,15 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
     # break mid-upgrade). New code should use get_vehicle_data_leaf.
     get_vechicle_data_leaf = get_vehicle_data_leaf
 
+    async def _async_fetch_pictures(self, vehicle: PorscheVehicle) -> None:
+        """Fetch picture locations best-effort — cosmetic, must not fail a cycle."""
+        try:
+            await vehicle.get_picture_locations()
+        except PorscheExceptionError as exc:
+            _LOGGER.debug(
+                "Could not fetch picture locations for %s: %s", vehicle.vin, exc,
+            )
+
     async def _async_update_data(self):
         """Fetch data from API endpoint."""
         try:
@@ -199,20 +244,18 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
 
                 for vehicle in self.vehicles:
                     await vehicle.get_stored_overview()
-                    # Pictures are cosmetic — a failure here must not abort
-                    # setup or a refresh cycle (the lib now propagates errors).
-                    try:
-                        await vehicle.get_picture_locations()
-                    except PorscheExceptionError as exc:
-                        _LOGGER.debug(
-                            "Could not fetch picture locations for %s: %s",
-                            vehicle.vin, exc,
-                        )
+                    # Pictures are cosmetic — best-effort, must not abort setup.
+                    await self._async_fetch_pictures(vehicle)
 
             else:
                 async with async_timeout.timeout(30):
                     for vehicle in self.vehicles:
                         await vehicle.get_stored_overview()
+                        # Retry pictures if the initial fetch came back empty
+                        # (e.g. a transient failure at setup); the image platform
+                        # adds the entities once they appear.
+                        if not vehicle.picture_locations:
+                            await self._async_fetch_pictures(vehicle)
 
         except PorscheWrongCredentialsError as exc:
             msg = f"{_AUTH_FAILED_MSG}: {exc}"

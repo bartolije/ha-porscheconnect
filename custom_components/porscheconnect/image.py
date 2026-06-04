@@ -85,12 +85,17 @@ async def async_setup_entry(
         for vehicle in coordinator.vehicles:
             if vehicle.vin in known_vins:
                 continue
-            known_vins.add(vehicle.vin)
-            new_entities.extend(
+            vehicle_images = [
                 PorscheImage(hass, coordinator, vehicle, description)
                 for description in IMAGE_TYPES
                 if description.view in vehicle.picture_locations
-            )
+            ]
+            # Only mark the VIN handled once pictures actually arrived, so a
+            # later refresh that finally populates picture_locations (e.g. after
+            # a transient failure at setup) can still add the image entities.
+            if vehicle_images:
+                known_vins.add(vehicle.vin)
+                new_entities.extend(vehicle_images)
         if new_entities:
             async_add_entities(new_entities)
 
