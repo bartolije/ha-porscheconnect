@@ -9,5 +9,5 @@
   "issue_tracker": "https://github.com/CJNE/ha-porscheconnect/issues",
   "quality_scale": "gold",
   "requirements": ["pyporscheconnectapi-bartolije==0.3.1"],
-  "version": "0.1.12"
+  "version": "0.2.1"
 }
