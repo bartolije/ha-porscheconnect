@@ -388,8 +388,6 @@ log slice to the GitHub issue.
   upstream for the fix.
 - **No push updates.** The integration polls every 32 minutes by default; for
   near-real-time data, use the *Get current vehicle information* button.
-- **No diagnostics platform yet.** Bug reports must rely on the debug log
-  recipe above.
 
 ## Removal
 
