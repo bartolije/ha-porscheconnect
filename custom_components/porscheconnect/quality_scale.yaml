@@ -199,4 +199,9 @@ rules:
   strict-typing:
     status: todo
     comment: |
-      Most public surface is typed; some legacy helpers still untyped.
+      All integration modules are now fully type-annotated and the ruff ANN
+      rules (ANN001/201/202/204) are enforced in CI. A full mypy --strict run
+      still reports Home Assistant base-class artifacts (Optional config_entry /
+      registry_entry, capability-lambda inference) that rely on HA's mypy
+      plugin, which only runs for core integrations — so the formal "added to
+      HA core's .strict-typing CI" rule is not applicable to a custom fork.

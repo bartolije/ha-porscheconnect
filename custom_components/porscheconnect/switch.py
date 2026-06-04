@@ -103,7 +103,7 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
         """Return the entity value to represent the entity state."""
         return self.entity_description.value_fn(self.vehicle)
 
-    async def async_turn_on(self) -> None:
+    async def async_turn_on(self, **kwargs: Any) -> None:
         """Turn the switch on."""
         try:
             await self.entity_description.remote_service_on(self.vehicle)
@@ -120,7 +120,7 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
 
         self.coordinator.async_update_listeners()
 
-    async def async_turn_off(self) -> None:
+    async def async_turn_off(self, **kwargs: Any) -> None:
         """Turn the switch off."""
         try:
             await self.entity_description.remote_service_off(self.vehicle)

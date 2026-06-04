@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import logging
+from typing import Any
 
 import voluptuous as vol
 from homeassistant import exceptions
@@ -11,6 +12,7 @@ from homeassistant.config_entries import (
     CONN_CLASS_CLOUD_POLL,
     SOURCE_REAUTH,
     SOURCE_RECONFIGURE,
+    ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
 )
@@ -31,12 +33,12 @@ STEP_USER_DATA_SCHEMA = vol.Schema({CONF_EMAIL: str, CONF_PASSWORD: str})
 CHANGE_PASSWORD_SCHEMA = vol.Schema({CONF_PASSWORD: str})
 
 
-async def validate_input(data):
+async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    token = {}
+    token: dict = {}
     try:
         conn = Connection(
             email=data[CONF_EMAIL],
@@ -85,7 +87,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     state = None
 
     @callback
-    def _get_entry_for_current_flow(self):
+    def _get_entry_for_current_flow(self) -> ConfigEntry | None:
         """Return the existing entry for reauth/reconfigure flows."""
         if self.source == SOURCE_REAUTH:
             return self._get_reauth_entry()
@@ -111,7 +113,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             return
         self._abort_if_unique_id_mismatch()
 
-    async def async_step_user(self, user_input=None):
+    async def async_step_user(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle the initial step."""
         if user_input is None:
             return self.async_show_form(
@@ -173,7 +177,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             errors=errors,
         )
 
-    async def async_step_reauth(self, user_input=None) -> ConfigFlowResult:
+    async def async_step_reauth(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle configuration by re-auth."""
         self._reauth_entry = self.hass.config_entries.async_get_entry(
             self.context["entry_id"],
@@ -184,7 +190,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_user()
 
-    async def async_step_reconfigure(self, user_input=None) -> ConfigFlowResult:
+    async def async_step_reconfigure(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Handle a reconfiguration flow initialized by the user."""
         self._existing_entry_data = dict(self._get_reconfigure_entry().data)
         await self.async_set_unique_id(
@@ -193,7 +201,9 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         return await self.async_step_change_password()
 
-    async def async_step_change_password(self, user_input=None) -> ConfigFlowResult:
+    async def async_step_change_password(
+        self, user_input: dict[str, Any] | None = None
+    ) -> ConfigFlowResult:
         """Show the change password step."""
         if user_input is not None:
             return await self.async_step_user(self._existing_entry_data | user_input)

@@ -7,6 +7,7 @@ import logging
 import operator
 from datetime import timedelta
 from functools import reduce
+from typing import Any
 
 import async_timeout
 from homeassistant.config_entries import ConfigEntry
@@ -61,11 +62,11 @@ def _is_auth_error(exc: PorscheExceptionError) -> bool:
     return getattr(exc, "code", None) == HTTP_UNAUTHORIZED
 
 
-def get_from_dict(datadict, keystring):
+def get_from_dict(datadict: dict, keystring: str) -> Any:
     """Safely get value from dict."""
     maplist = keystring.split(".")
 
-    def safe_getitem(latest_value, key):
+    def safe_getitem(latest_value: Any, key: str) -> Any:
         if latest_value is None or key not in latest_value:
             return None
         return operator.getitem(latest_value, key)
@@ -74,7 +75,11 @@ def get_from_dict(datadict, keystring):
 
 
 @callback
-def _async_save_token(hass, config_entry, access_token):
+def _async_save_token(
+    hass: HomeAssistant,
+    config_entry: PorscheConnectConfigEntry,
+    access_token: dict,
+) -> None:
     hass.config_entries.async_update_entry(
         config_entry,
         data={
@@ -195,10 +200,15 @@ async def async_setup_entry(
 class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Porsche data."""
 
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry, controller):
+    def __init__(
+        self,
+        hass: HomeAssistant,
+        config_entry: ConfigEntry,
+        controller: PorscheConnectAccount,
+    ) -> None:
         """Initialise the controller."""
         self.controller = controller
-        self.vehicles = []
+        self.vehicles: list[PorscheVehicle] = []
         self.hass = hass
 
         scan_interval = timedelta(
@@ -219,7 +229,9 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             config_entry=config_entry,
         )
 
-    def get_vehicle_data_leaf(self, vehicle, node, leaf):
+    def get_vehicle_data_leaf(
+        self, vehicle: PorscheVehicle, node: str, leaf: str,
+    ) -> Any:
         """Get data value leaf from dict."""
         return get_from_dict(get_from_dict(vehicle.data, node), leaf)
 
@@ -236,7 +248,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 "Could not fetch picture locations for %s: %s", vehicle.vin, exc,
             )
 
-    async def _async_update_data(self):
+    async def _async_update_data(self) -> dict:
         """Fetch data from API endpoint."""
         try:
             if len(self.vehicles) == 0:
