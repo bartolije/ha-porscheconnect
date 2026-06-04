@@ -8,6 +8,6 @@
   "iot_class": "cloud_polling",
   "issue_tracker": "https://github.com/CJNE/ha-porscheconnect/issues",
   "quality_scale": "gold",
-  "requirements": ["pyporscheconnectapi-bartolije==0.3.0"],
+  "requirements": ["pyporscheconnectapi-bartolije==0.3.1"],
   "version": "0.1.12"
 }
