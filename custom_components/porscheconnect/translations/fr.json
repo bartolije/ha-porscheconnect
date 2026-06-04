@@ -1,0 +1,296 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "L'appareil est déjà configuré",
+      "reauth_successful": "La ré-authentification a réussi",
+      "reconfigure_successful": "La reconfiguration a réussi",
+      "unique_id_mismatch": "L'adresse e-mail ne correspond pas au compte Porsche Connect configuré"
+    },
+    "error": {
+      "cannot_connect": "Échec de la connexion",
+      "invalid_auth": "Authentification invalide",
+      "unknown": "Erreur inattendue"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "password": "Mot de passe",
+          "email": "E-mail"
+        }
+      },
+      "captcha": {
+        "title": "Vérification captcha",
+        "description": "{captcha_img}",
+        "data": {
+          "captcha_code": "Code captcha"
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "flash_indicators": {
+        "name": "Faire clignoter les feux"
+      },
+      "honk_and_flash_indicators": {
+        "name": "Klaxonner et faire clignoter les feux"
+      },
+      "get_current_overview": {
+        "name": "Actualiser les informations du véhicule"
+      }
+    },
+    "binary_sensor": {
+      "parking_brake": {
+        "name": "Frein de stationnement"
+      },
+      "parking_light": {
+        "name": "Feux de stationnement"
+      },
+      "privacy_mode": {
+        "name": "Mode privé"
+      },
+      "doors_and_lids": {
+        "name": "Portes et ouvrants"
+      },
+      "tire_pressure_status": {
+        "name": "État de la pression des pneus",
+        "state": {
+          "on": "Alerte",
+          "off": "Ok"
+        }
+      },
+      "remote_access": {
+        "name": "Accès à distance"
+      },
+      "door_front_left": {
+        "name": "Porte (avant gauche)"
+      },
+      "door_front_right": {
+        "name": "Porte (avant droite)"
+      },
+      "door_rear_left": {
+        "name": "Porte (arrière gauche)"
+      },
+      "door_rear_right": {
+        "name": "Porte (arrière droite)"
+      },
+      "lid_front": {
+        "name": "Coffre avant"
+      },
+      "lid_rear": {
+        "name": "Coffre arrière"
+      },
+      "window_front_left": {
+        "name": "Fenêtre (avant gauche)"
+      },
+      "window_front_right": {
+        "name": "Fenêtre (avant droite)"
+      },
+      "window_rear_left": {
+        "name": "Fenêtre (arrière gauche)"
+      },
+      "window_rear_right": {
+        "name": "Fenêtre (arrière droite)"
+      },
+      "sunroof": {
+        "name": "Toit ouvrant"
+      },
+      "sunroof_rear": {
+        "name": "Toit ouvrant arrière"
+      },
+      "convertible_top": {
+        "name": "Capote"
+      },
+      "charge_flap_left": {
+        "name": "Trappe de charge (gauche)"
+      },
+      "charge_flap_right": {
+        "name": "Trappe de charge (droite)"
+      },
+      "spoiler": {
+        "name": "Aileron actif"
+      },
+      "service_flap": {
+        "name": "Trappe de service"
+      }
+    },
+    "image": {
+      "front_view": {
+        "name": "Vue de face"
+      },
+      "side_view": {
+        "name": "Vue de côté"
+      },
+      "rear_view": {
+        "name": "Vue arrière"
+      },
+      "rear_top_view": {
+        "name": "Vue en diagonale du dessus"
+      },
+      "top_view": {
+        "name": "Vue du dessus"
+      }
+    },
+    "sensor": {
+      "charging_power": {
+        "name": "Puissance de charge"
+      },
+      "charging_target": {
+        "name": "Cible de charge"
+      },
+      "charging_rate": {
+        "name": "Vitesse de charge"
+      },
+      "charging_finished": {
+        "name": "Fin de charge"
+      },
+      "remaining_range_electric": {
+        "name": "Autonomie électrique restante"
+      },
+      "state_of_charge": {
+        "name": "Niveau de charge"
+      },
+      "mileage": {
+        "name": "Kilométrage"
+      },
+      "remaining_range": {
+        "name": "Autonomie restante"
+      },
+      "fuel_level": {
+        "name": "Niveau de carburant"
+      },
+      "charging_status": {
+        "name": "Statut de charge",
+        "state": {
+          "charging": "En charge",
+          "charging_completed": "Charge terminée",
+          "charging_error": "Erreur de charge",
+          "initialising": "Initialisation de la charge",
+          "instant_charging": "Charge instantanée",
+          "not_charging": "Pas en charge",
+          "not_plugged": "Non branché",
+          "off": "Charge désactivée"
+        }
+      },
+      "tire_pressure_front_left": {
+        "name": "Écart de pression des pneus (avant gauche)"
+      },
+      "tire_pressure_front_right": {
+        "name": "Écart de pression des pneus (avant droit)"
+      },
+      "tire_pressure_rear_left": {
+        "name": "Écart de pression des pneus (arrière gauche)"
+      },
+      "tire_pressure_rear_right": {
+        "name": "Écart de pression des pneus (arrière droit)"
+      },
+      "fuel_reserve": {
+        "name": "Réserve de carburant"
+      },
+      "main_service_distance": {
+        "name": "Distance avant entretien"
+      },
+      "main_service_time": {
+        "name": "Délai avant entretien"
+      },
+      "oil_service_distance": {
+        "name": "Distance avant vidange"
+      },
+      "oil_service_time": {
+        "name": "Délai avant vidange"
+      },
+      "intermediate_service_distance": {
+        "name": "Distance avant entretien intermédiaire"
+      },
+      "intermediate_service_time": {
+        "name": "Délai avant entretien intermédiaire"
+      }
+    },
+    "number": {
+      "target_soc": {
+        "name": "Niveau de charge cible"
+      }
+    },
+    "lock": {
+      "lock": {
+        "name": "Verrouillage des portes"
+      }
+    },
+    "switch": {
+      "climatise": {
+        "name": "Climatisation à distance"
+      },
+      "direct_charging": {
+        "name": "Charge directe"
+      }
+    }
+  },
+  "exceptions": {
+    "climatisation_not_supported": {
+      "message": "La climatisation à distance n'est pas prise en charge par le véhicule {vehicle}."
+    },
+    "climate_zone_not_supported": {
+      "message": "La zone de climatisation {zone} n'est pas disponible sur le véhicule {vehicle}. Retirez cette option de l'appel de service."
+    },
+    "invalid_device_id": {
+      "message": "Aucun appareil portant l'identifiant {device_id} n'est enregistré dans Home Assistant."
+    },
+    "no_config_entry_for_device": {
+      "message": "L'appareil {device_id} n'est associé à aucune entrée de configuration Porsche Connect chargée."
+    },
+    "remote_service_failed": {
+      "message": "Le service à distance {service} a échoué pour le véhicule {vin} : {error}"
+    },
+    "lock_failed": {
+      "message": "Échec du verrouillage du véhicule {vin} : {error}"
+    },
+    "unlock_failed": {
+      "message": "Échec du déverrouillage du véhicule {vin} : {error}"
+    },
+    "pin_code_missing": {
+      "message": "Un code PIN est requis pour déverrouiller le véhicule. Configurez un code par défaut sur l'entité de verrouillage ou fournissez-le à l'action de déverrouillage."
+    }
+  },
+  "services": {
+    "climatisation_start": {
+      "name": "Démarrer la climatisation à distance",
+      "description": "Démarre la climatisation à distance de l'habitacle avec les paramètres spécifiés",
+      "fields": {
+        "vehicle": {
+          "name": "Véhicule",
+          "description": "Le véhicule à climatiser."
+        },
+        "temperature": {
+          "name": "Température",
+          "description": "Température cible pour la climatisation (par défaut 20 °C)"
+        },
+        "front_left": {
+          "name": "Chauffage siège avant gauche",
+          "description": "Active le chauffage du siège avant gauche (désactivé par défaut)"
+        },
+        "front_right": {
+          "name": "Chauffage siège avant droit",
+          "description": "Active le chauffage du siège avant droit (désactivé par défaut)"
+        },
+        "rear_left": {
+          "name": "Chauffage siège arrière gauche",
+          "description": "Active le chauffage du siège arrière gauche (désactivé par défaut)"
+        },
+        "rear_right": {
+          "name": "Chauffage siège arrière droit",
+          "description": "Active le chauffage du siège arrière droit (désactivé par défaut)"
+        }
+      }
+    },
+    "climatisation_stop": {
+      "name": "Arrêter la climatisation",
+      "description": "Arrête la climatisation à distance précédemment démarrée sur un véhicule Porsche Connect.",
+      "fields": {
+        "vehicle": {
+          "name": "Véhicule",
+          "description": "Le véhicule Porsche Connect dont la climatisation doit être arrêtée."
+        }
+      }
+    }
+  }
+}
