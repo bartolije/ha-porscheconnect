@@ -1,0 +1,296 @@
+{
+  "config": {
+    "abort": {
+      "already_configured": "Apparaat is al geconfigureerd",
+      "reauth_successful": "Herauthenticatie is geslaagd",
+      "reconfigure_successful": "Herconfiguratie is geslaagd",
+      "unique_id_mismatch": "Het e-mailadres komt niet overeen met het geconfigureerde Porsche Connect-account"
+    },
+    "error": {
+      "cannot_connect": "Verbinding mislukt",
+      "invalid_auth": "Ongeldige authenticatie",
+      "unknown": "Onverwachte fout"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "password": "Wachtwoord",
+          "email": "E-mail"
+        }
+      },
+      "captcha": {
+        "title": "Captcha-verificatie",
+        "description": "{captcha_img}",
+        "data": {
+          "captcha_code": "Captcha-code"
+        }
+      }
+    }
+  },
+  "entity": {
+    "button": {
+      "flash_indicators": {
+        "name": "Knipperlichten laten knipperen"
+      },
+      "honk_and_flash_indicators": {
+        "name": "Claxonneren en knipperlichten laten knipperen"
+      },
+      "get_current_overview": {
+        "name": "Huidige voertuiginformatie ophalen"
+      }
+    },
+    "binary_sensor": {
+      "parking_brake": {
+        "name": "Parkeerrem"
+      },
+      "parking_light": {
+        "name": "Parkeerlicht"
+      },
+      "privacy_mode": {
+        "name": "Privacymodus"
+      },
+      "doors_and_lids": {
+        "name": "Deuren en kleppen"
+      },
+      "tire_pressure_status": {
+        "name": "Bandenspanningsstatus",
+        "state": {
+          "on": "Waarschuwing",
+          "off": "Ok"
+        }
+      },
+      "remote_access": {
+        "name": "Toegang op afstand"
+      },
+      "door_front_left": {
+        "name": "Deur (linksvoor)"
+      },
+      "door_front_right": {
+        "name": "Deur (rechtsvoor)"
+      },
+      "door_rear_left": {
+        "name": "Deur (linksachter)"
+      },
+      "door_rear_right": {
+        "name": "Deur (rechtsachter)"
+      },
+      "lid_front": {
+        "name": "Frunk"
+      },
+      "lid_rear": {
+        "name": "Kofferbak"
+      },
+      "window_front_left": {
+        "name": "Raam (linksvoor)"
+      },
+      "window_front_right": {
+        "name": "Raam (rechtsvoor)"
+      },
+      "window_rear_left": {
+        "name": "Raam (linksachter)"
+      },
+      "window_rear_right": {
+        "name": "Raam (rechtsachter)"
+      },
+      "sunroof": {
+        "name": "Schuifdak"
+      },
+      "sunroof_rear": {
+        "name": "Schuifdak achter"
+      },
+      "convertible_top": {
+        "name": "Cabriodak"
+      },
+      "charge_flap_left": {
+        "name": "Laadklep (links)"
+      },
+      "charge_flap_right": {
+        "name": "Laadklep (rechts)"
+      },
+      "spoiler": {
+        "name": "Actieve spoiler"
+      },
+      "service_flap": {
+        "name": "Serviceklep"
+      }
+    },
+    "image": {
+      "front_view": {
+        "name": "Vooraanzicht"
+      },
+      "side_view": {
+        "name": "Zijaanzicht"
+      },
+      "rear_view": {
+        "name": "Achteraanzicht"
+      },
+      "rear_top_view": {
+        "name": "Schuin van bovenaf"
+      },
+      "top_view": {
+        "name": "Bovenaanzicht"
+      }
+    },
+    "sensor": {
+      "charging_power": {
+        "name": "Laadvermogen"
+      },
+      "charging_target": {
+        "name": "Laaddoel"
+      },
+      "charging_rate": {
+        "name": "Laadsnelheid"
+      },
+      "charging_finished": {
+        "name": "Laden eindigt"
+      },
+      "remaining_range_electric": {
+        "name": "Resterende actieradius elektrisch"
+      },
+      "state_of_charge": {
+        "name": "Laadtoestand"
+      },
+      "mileage": {
+        "name": "Kilometerstand"
+      },
+      "remaining_range": {
+        "name": "Resterende actieradius"
+      },
+      "fuel_level": {
+        "name": "Brandstofniveau"
+      },
+      "charging_status": {
+        "name": "Laadstatus",
+        "state": {
+          "charging": "Aan het laden",
+          "charging_completed": "Laden voltooid",
+          "charging_error": "Laadfout",
+          "initialising": "Laden initialiseren",
+          "instant_charging": "Direct laden",
+          "not_charging": "Niet aan het laden",
+          "not_plugged": "Niet aangesloten",
+          "off": "Laden uit"
+        }
+      },
+      "tire_pressure_front_left": {
+        "name": "Bandenspanningsafwijking (linksvoor)"
+      },
+      "tire_pressure_front_right": {
+        "name": "Bandenspanningsafwijking (rechtsvoor)"
+      },
+      "tire_pressure_rear_left": {
+        "name": "Bandenspanningsafwijking (linksachter)"
+      },
+      "tire_pressure_rear_right": {
+        "name": "Bandenspanningsafwijking (rechtsachter)"
+      },
+      "fuel_reserve": {
+        "name": "Brandstofreserve"
+      },
+      "main_service_distance": {
+        "name": "Afstand tot onderhoudsbeurt"
+      },
+      "main_service_time": {
+        "name": "Tijd tot onderhoudsbeurt"
+      },
+      "oil_service_distance": {
+        "name": "Afstand tot oliebeurt"
+      },
+      "oil_service_time": {
+        "name": "Tijd tot oliebeurt"
+      },
+      "intermediate_service_distance": {
+        "name": "Afstand tot tussentijdse onderhoudsbeurt"
+      },
+      "intermediate_service_time": {
+        "name": "Tijd tot tussentijdse onderhoudsbeurt"
+      }
+    },
+    "number": {
+      "target_soc": {
+        "name": "Gewenste laadtoestand"
+      }
+    },
+    "lock": {
+      "lock": {
+        "name": "Deurslot"
+      }
+    },
+    "switch": {
+      "climatise": {
+        "name": "Klimatisering op afstand"
+      },
+      "direct_charging": {
+        "name": "Direct laden"
+      }
+    }
+  },
+  "exceptions": {
+    "climatisation_not_supported": {
+      "message": "Klimatisering op afstand wordt niet ondersteund door voertuig {vehicle}."
+    },
+    "climate_zone_not_supported": {
+      "message": "Klimaatzone {zone} is niet beschikbaar op voertuig {vehicle}. Verwijder deze optie uit de service-aanroep."
+    },
+    "invalid_device_id": {
+      "message": "Er is geen apparaat met id {device_id} geregistreerd bij Home Assistant."
+    },
+    "no_config_entry_for_device": {
+      "message": "Apparaat {device_id} is niet gekoppeld aan een geladen Porsche Connect-configuratie-item."
+    },
+    "remote_service_failed": {
+      "message": "Externe service {service} mislukt voor voertuig {vin}: {error}"
+    },
+    "lock_failed": {
+      "message": "Vergrendelen van voertuig {vin} mislukt: {error}"
+    },
+    "unlock_failed": {
+      "message": "Ontgrendelen van voertuig {vin} mislukt: {error}"
+    },
+    "pin_code_missing": {
+      "message": "Er is een pincode vereist om het voertuig te ontgrendelen. Configureer een standaardcode op het slot-item of geef deze mee aan de ontgrendelactie."
+    }
+  },
+  "services": {
+    "climatisation_start": {
+      "name": "Klimatisering op afstand starten",
+      "description": "Start de klimatisering op afstand van de passagiersruimte met opgegeven parameters",
+      "fields": {
+        "vehicle": {
+          "name": "Voertuig",
+          "description": "Het voertuig dat geklimatiseerd moet worden."
+        },
+        "temperature": {
+          "name": "Temperatuur",
+          "description": "Gewenste temperatuur voor klimatisering (standaard 20 graden C)"
+        },
+        "front_left": {
+          "name": "Stoelverwarming linksvoor",
+          "description": "Of de stoelverwarming linksvoor geactiveerd moet worden (standaard uit)"
+        },
+        "front_right": {
+          "name": "Stoelverwarming rechtsvoor",
+          "description": "Of de stoelverwarming rechtsvoor geactiveerd moet worden (standaard uit)"
+        },
+        "rear_left": {
+          "name": "Stoelverwarming linksachter",
+          "description": "Of de stoelverwarming linksachter geactiveerd moet worden (standaard uit)"
+        },
+        "rear_right": {
+          "name": "Stoelverwarming rechtsachter",
+          "description": "Of de stoelverwarming rechtsachter geactiveerd moet worden (standaard uit)"
+        }
+      }
+    },
+    "climatisation_stop": {
+      "name": "Klimatisering stoppen",
+      "description": "Stop de klimatisering op afstand die eerder is gestart op een Porsche Connect-voertuig.",
+      "fields": {
+        "vehicle": {
+          "name": "Voertuig",
+          "description": "Het Porsche Connect-voertuig waarvan de klimatisering moet worden gestopt."
+        }
+      }
+    }
+  }
+}

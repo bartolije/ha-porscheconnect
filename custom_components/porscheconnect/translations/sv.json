@@ -1,174 +1,296 @@
 {
-     "config": {
-        "abort": {
-            "already_configured": "Enheten är redan konfigurerad",
-            "reauth_successful": "Återautentiseringen lyckades",
-            "reconfigure_successful": "Omkonfigureringen lyckades",
-            "unique_id_mismatch": "E-postadressen matchar inte det konfigurerade Porsche Connect-kontot"
-        },
-        "error": {
-            "cannot_connect": "Anslutningsfel",
-            "invalid_auth": "Misslyckades att autentisera",
-            "unknown": "Oväntat fel"
-        },
-        "step": {
-            "user": {
-                "data": {
-                    "password": "Lösenord",
-                    "email": "E-postadress"
-                }
-            },
-		    "captcha": {
-		        "title": "Captchaverifiering",
-		        "description": "{captcha_img}",
-		        "data": {
-		            "captcha_code": "Captcha-kod"
-		        }
-		    }
-		}
-	},
-    "entity": {
-        "binary_sensor": {
-            "parking_brake": {
-                "name": "Parkeringsbroms",
-                "state": {
-                    "on": "På",
-                    "off": "Av"
-                }
-            },
-            "parking_light": {
-                "name": "Parkeringsljus",
-                "state": {
-                    "on": "Tänt",
-                    "off": "Släckt"
-                }
-            },
-            "privacy_mode": {
-                "name": "Privat läge",
-                "state": {
-                    "on": "På",
-                    "off": "Av"
-                }
-            },
-            "tire_pressure_status": {
-				"name": "Däcktrycksövervakning",
-                "state": {
-                    "on": "Varning",
-                    "off": "Ok"
-                }
-			},
-            "doors_and_lids": {
-				"name": "Dörrar och luckor",
-                "state": {
-                    "on": "Öppen",
-                    "off": "Stängd"
-                }
-			},
-            "remote_access": {
-                "name": "Fjärrstyrning",
-                "state": {
-                    "on": "På",
-                    "off": "Av"
-                }
-            }
-        },
-        "button": {
-            "flash_indicators": {"name": "Blinka"},
-            "honk_and_flash_indicators": {"name": "Tuta och blinka"},
-            "get_current_overview": {"name": "Uppdatera fordonsinformation"}
-        },
-        "image": {
-            "front_view": {"name": "Vy framifrån"},
-            "side_view": {"name": "Vy från sidan"},
-            "rear_view": {"name": "Vy bakifrån"},
-            "rear_top_view": {"name": "Vy snett ovanifrån"},
-            "top_view": {"name": "Vy ovanifrån"}
-        },
-        "sensor": {
-            "charging_power": {
-                "name": "Laddeffekt"
-            },
-            "charging_target": {
-                "name": "Laddinställning"
-            },
-            "charging_rate": {
-                "name": "Laddhastighet"
-            },
-            "charging_finished": {
-                "name": "Laddning klar"
-            },
-            "remaining_range_electric": {
-                "name": "Räckvidd på batteri"
-            },
-            "state_of_charge": {
-                "name": "Laddnivå"
-            },
-            "mileage": {
-                "name": "Mätarställning"
-            },
-            "remaining_range": {
-                "name": "Återstående räckvidd"
-            },
-            "fuel_level": {
-                "name": "Bränslenivå"
-            },
-            "charging_status":  {
-                "name": "Laddstatus",
-                "state": {
-                    "charging": "Laddar",
-                    "charging_completed": "Laddning klar",
-                    "charging_error": "Laddfel",
-                    "initialising": "Initierar laddning",
-                    "instant_charging": "Direktladdar",
-                    "not_charging": "Laddar ej",
-                    "not_plugged": "Not connected",
-                    "off": "Laddning av"
-                }
-            }
-        },
-        "number": {
-            "target_soc": {"name": "Begärd laddnivå"}
-        },
-        "lock": {
-            "lock": {
-                "name": "Dörrlås"
-            }
-        },
-        "switch": {
-            "climatise": {"name": "Fjärrklimatisering"},
-            "direct_charging": {"name": "Direktladdning"}
-        }
+  "config": {
+    "abort": {
+      "already_configured": "Enheten är redan konfigurerad",
+      "reauth_successful": "Återautentiseringen lyckades",
+      "reconfigure_successful": "Omkonfigureringen lyckades",
+      "unique_id_mismatch": "E-postadressen matchar inte det konfigurerade Porsche Connect-kontot"
     },
-    "services": {
-        "climatisation_start": {
-            "name": "Starta klimatisering",
-            "description": "Startar klimatisering av kupén med angivna parametrar.",
-            "fields": {
-                "vehicle": {
-                    "name": "Fordon",
-                    "description": "Det fordon som ska klimatiseras."
-                },
-                "temperature": {
-                    "name": "Temperatur",
-                    "description": "Måltemperatur för klimatisering (standardvärde 20 grader)"
-                },
-                "front_left": {
-                    "name": "Sätesvärme vänster fram",
-                    "description": "Om sätesvärmde vänster fram ska aktiveras (standardvärde av)"
-                },
-                "front_right": {
-                    "name": "Sätesvärme höger fram",
-                    "description": "Om sätesvärmde höger fram ska aktiveras (standardvärde av)"
-                },
-                "rear_left": {
-                    "name": "Sätesvärme vänster bak",
-                    "description": "Om sätesvärmde vänster bak ska aktiveras (standardvärde av)"
-                },
-                "rear_right": {
-                    "name": "Sätesvärme höger bak",
-                    "description": "Om sätesvärmde höger bak ska aktiveras (standardvärde av)"
-                }
-            }
+    "error": {
+      "cannot_connect": "Det gick inte att ansluta",
+      "invalid_auth": "Ogiltig autentisering",
+      "unknown": "Oväntat fel"
+    },
+    "step": {
+      "user": {
+        "data": {
+          "password": "Lösenord",
+          "email": "E-postadress"
         }
+      },
+      "captcha": {
+        "title": "Captcha-verifiering",
+        "description": "{captcha_img}",
+        "data": {
+          "captcha_code": "Captcha-kod"
+        }
+      }
     }
+  },
+  "entity": {
+    "button": {
+      "flash_indicators": {
+        "name": "Blinka med blinkers"
+      },
+      "honk_and_flash_indicators": {
+        "name": "Tuta och blinka med blinkers"
+      },
+      "get_current_overview": {
+        "name": "Hämta aktuell fordonsinformation"
+      }
+    },
+    "binary_sensor": {
+      "parking_brake": {
+        "name": "Parkeringsbroms"
+      },
+      "parking_light": {
+        "name": "Parkeringsljus"
+      },
+      "privacy_mode": {
+        "name": "Privat läge"
+      },
+      "doors_and_lids": {
+        "name": "Dörrar och luckor"
+      },
+      "tire_pressure_status": {
+        "name": "Däcktrycksstatus",
+        "state": {
+          "on": "Varning",
+          "off": "Ok"
+        }
+      },
+      "remote_access": {
+        "name": "Fjärråtkomst"
+      },
+      "door_front_left": {
+        "name": "Dörr (fram vänster)"
+      },
+      "door_front_right": {
+        "name": "Dörr (fram höger)"
+      },
+      "door_rear_left": {
+        "name": "Dörr (bak vänster)"
+      },
+      "door_rear_right": {
+        "name": "Dörr (bak höger)"
+      },
+      "lid_front": {
+        "name": "Främre bagageutrymme"
+      },
+      "lid_rear": {
+        "name": "Bagageutrymme"
+      },
+      "window_front_left": {
+        "name": "Fönster (fram vänster)"
+      },
+      "window_front_right": {
+        "name": "Fönster (fram höger)"
+      },
+      "window_rear_left": {
+        "name": "Fönster (bak vänster)"
+      },
+      "window_rear_right": {
+        "name": "Fönster (bak höger)"
+      },
+      "sunroof": {
+        "name": "Taklucka"
+      },
+      "sunroof_rear": {
+        "name": "Bakre taklucka"
+      },
+      "convertible_top": {
+        "name": "Sufflett"
+      },
+      "charge_flap_left": {
+        "name": "Laddlucka (vänster)"
+      },
+      "charge_flap_right": {
+        "name": "Laddlucka (höger)"
+      },
+      "spoiler": {
+        "name": "Aktiv spoiler"
+      },
+      "service_flap": {
+        "name": "Servicelucka"
+      }
+    },
+    "image": {
+      "front_view": {
+        "name": "Vy framifrån"
+      },
+      "side_view": {
+        "name": "Vy från sidan"
+      },
+      "rear_view": {
+        "name": "Vy bakifrån"
+      },
+      "rear_top_view": {
+        "name": "Vy snett uppifrån"
+      },
+      "top_view": {
+        "name": "Vy uppifrån"
+      }
+    },
+    "sensor": {
+      "charging_power": {
+        "name": "Laddeffekt"
+      },
+      "charging_target": {
+        "name": "Laddningsmål"
+      },
+      "charging_rate": {
+        "name": "Laddningshastighet"
+      },
+      "charging_finished": {
+        "name": "Laddning klar"
+      },
+      "remaining_range_electric": {
+        "name": "Återstående räckvidd el"
+      },
+      "state_of_charge": {
+        "name": "Laddningsnivå"
+      },
+      "mileage": {
+        "name": "Mätarställning"
+      },
+      "remaining_range": {
+        "name": "Återstående räckvidd"
+      },
+      "fuel_level": {
+        "name": "Bränslenivå"
+      },
+      "charging_status": {
+        "name": "Laddningsstatus",
+        "state": {
+          "charging": "Laddar",
+          "charging_completed": "Laddning slutförd",
+          "charging_error": "Laddningsfel",
+          "initialising": "Initierar laddning",
+          "instant_charging": "Direktladdning",
+          "not_charging": "Laddar inte",
+          "not_plugged": "Inte ansluten",
+          "off": "Laddning av"
+        }
+      },
+      "tire_pressure_front_left": {
+        "name": "Däcktrycksavvikelse (fram vänster)"
+      },
+      "tire_pressure_front_right": {
+        "name": "Däcktrycksavvikelse (fram höger)"
+      },
+      "tire_pressure_rear_left": {
+        "name": "Däcktrycksavvikelse (bak vänster)"
+      },
+      "tire_pressure_rear_right": {
+        "name": "Däcktrycksavvikelse (bak höger)"
+      },
+      "fuel_reserve": {
+        "name": "Bränslereserv"
+      },
+      "main_service_distance": {
+        "name": "Sträcka till service"
+      },
+      "main_service_time": {
+        "name": "Tid till service"
+      },
+      "oil_service_distance": {
+        "name": "Sträcka till oljeservice"
+      },
+      "oil_service_time": {
+        "name": "Tid till oljeservice"
+      },
+      "intermediate_service_distance": {
+        "name": "Sträcka till mellanservice"
+      },
+      "intermediate_service_time": {
+        "name": "Tid till mellanservice"
+      }
+    },
+    "number": {
+      "target_soc": {
+        "name": "Mål för laddningsnivå"
+      }
+    },
+    "lock": {
+      "lock": {
+        "name": "Dörrlås"
+      }
+    },
+    "switch": {
+      "climatise": {
+        "name": "Fjärrklimatisering"
+      },
+      "direct_charging": {
+        "name": "Direktladdning"
+      }
+    }
+  },
+  "exceptions": {
+    "climatisation_not_supported": {
+      "message": "Fjärrklimatisering stöds inte av fordonet {vehicle}."
+    },
+    "climate_zone_not_supported": {
+      "message": "Klimatzonen {zone} är inte tillgänglig på fordonet {vehicle}. Ta bort det här alternativet från tjänsteanropet."
+    },
+    "invalid_device_id": {
+      "message": "Ingen enhet med id {device_id} är registrerad i Home Assistant."
+    },
+    "no_config_entry_for_device": {
+      "message": "Enheten {device_id} är inte kopplad till en inläst Porsche Connect-konfigurationspost."
+    },
+    "remote_service_failed": {
+      "message": "Fjärrtjänsten {service} misslyckades för fordonet {vin}: {error}"
+    },
+    "lock_failed": {
+      "message": "Det gick inte att låsa fordonet {vin}: {error}"
+    },
+    "unlock_failed": {
+      "message": "Det gick inte att låsa upp fordonet {vin}: {error}"
+    },
+    "pin_code_missing": {
+      "message": "En PIN-kod krävs för att låsa upp fordonet. Ange en standardkod på låsenheten eller skicka den till upplåsningsåtgärden."
+    }
+  },
+  "services": {
+    "climatisation_start": {
+      "name": "Starta fjärrklimatisering",
+      "description": "Startar fjärrklimatisering av kupén med angivna parametrar",
+      "fields": {
+        "vehicle": {
+          "name": "Fordon",
+          "description": "Det fordon som ska klimatiseras."
+        },
+        "temperature": {
+          "name": "Temperatur",
+          "description": "Måltemperatur för klimatisering (standard 20 grader C)"
+        },
+        "front_left": {
+          "name": "Sätesvärme fram vänster",
+          "description": "Om sätesvärmen fram vänster ska aktiveras (standard av)"
+        },
+        "front_right": {
+          "name": "Sätesvärme fram höger",
+          "description": "Om sätesvärmen fram höger ska aktiveras (standard av)"
+        },
+        "rear_left": {
+          "name": "Sätesvärme bak vänster",
+          "description": "Om sätesvärmen bak vänster ska aktiveras (standard av)"
+        },
+        "rear_right": {
+          "name": "Sätesvärme bak höger",
+          "description": "Om sätesvärmen bak höger ska aktiveras (standard av)"
+        }
+      }
+    },
+    "climatisation_stop": {
+      "name": "Stoppa klimatisering",
+      "description": "Stoppa fjärrklimatiseringen som tidigare startades på ett Porsche Connect-fordon.",
+      "fields": {
+        "vehicle": {
+          "name": "Fordon",
+          "description": "Porsche Connect-fordonet vars klimatisering ska stoppas."
+        }
+      }
+    }
+  }
 }
