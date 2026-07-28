@@ -3,7 +3,9 @@ exclude = [ "tests/*.py" ]
 
 [tool.ruff.lint]
 select = [ "ALL" ]
-ignore = [ "ANN401", "ARG001", "ARG002", "TC001", "TC002", "TC003", "COM812", "ISC001", "PLC0415" ]
+# CPY and PLR0917 are preview rules in the pinned ruff but stabilised in newer
+# releases — ignored explicitly so bumping the pin doesn't break CI.
+ignore = [ "ANN401", "ARG001", "ARG002", "CPY", "PLR0917", "TC001", "TC002", "TC003", "COM812", "ISC001", "PLC0415" ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"

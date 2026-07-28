@@ -11,6 +11,10 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - uses: astral-sh/ruff-action@v3
+        with:
+          # Pinned: an unpinned action pulls the newest ruff, whose freshly
+          # stabilised rules break CI out of the blue (select ALL).
+          version: 0.15.15
 
   hacs:
     runs-on: "ubuntu-latest"
