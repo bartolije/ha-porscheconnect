@@ -6,6 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
 from pyporscheconnectapi.exceptions import (
@@ -14,7 +15,13 @@ from pyporscheconnectapi.exceptions import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.porscheconnect.const import DOMAIN
+from custom_components.porscheconnect.const import (
+    CONF_CAPTCHA_CODE,
+    CONF_CODE_VERIFIER,
+    CONF_OAUTH_STATE,
+    DOMAIN,
+    TRANSIENT_AUTH_FIELDS,
+)
 
 
 async def test_async_setup_entry_success(
@@ -141,3 +148,38 @@ async def test_unique_id_migration_renames_name_keyed_entities(
     migrated = ent_reg.async_get(old.entity_id)
     assert migrated is not None
     assert migrated.unique_id == f"{mock_vehicle.vin}-mileage"
+
+
+async def test_migrate_entry_drops_transient_auth_fields(
+    hass: HomeAssistant,
+    mock_account,  # noqa: ARG001
+    mock_connection_cls,  # noqa: ARG001
+    mock_account_cls,  # noqa: ARG001
+) -> None:
+    """A v1 entry still holding an in-flight challenge is migrated to v2.
+
+    Those secrets are single-use: replaying a stale captcha state on the next
+    login only makes it fail.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title="tester@example.com",
+        unique_id="tester@example.com",
+        version=1,
+        data={
+            CONF_EMAIL: "tester@example.com",
+            CONF_PASSWORD: "hunter2",
+            CONF_ACCESS_TOKEN: {"access_token": "abc123", "expires_in": 3600},
+            CONF_CAPTCHA_CODE: "STALE",
+            CONF_OAUTH_STATE: "state-token-xyz",
+            CONF_CODE_VERIFIER: "verifier-abc",
+        },
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.version == 2
+    assert TRANSIENT_AUTH_FIELDS.isdisjoint(entry.data)
+    assert entry.data[CONF_ACCESS_TOKEN] == {"access_token": "abc123", "expires_in": 3600}

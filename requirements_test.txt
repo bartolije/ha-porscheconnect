@@ -1,4 +1,4 @@
-pyporscheconnectapi-bartolije==0.3.1
+pyporscheconnectapi-bartolije==0.5.0
 pytest
 pytest-asyncio
 pytest-homeassistant-custom-component

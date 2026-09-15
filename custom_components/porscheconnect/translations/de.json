@@ -165,6 +165,7 @@
           "charging": "Lädt",
           "charging_completed": "Ladevorgang abgeschlossen",
           "charging_error": "Ladefehler",
+          "charging_stopped": "Ladevorgang gestoppt",
           "initialising": "Ladevorgang wird initialisiert",
           "instant_charging": "Sofortladen",
           "not_charging": "Lädt nicht",

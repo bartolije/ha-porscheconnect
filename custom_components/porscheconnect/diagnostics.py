@@ -24,7 +24,9 @@ TO_REDACT_ENTRY: set[str] = {
     "refresh_token",
     "token",
     "captcha",
+    "captcha_code",
     "state",
+    "code_verifier",
 }
 
 # Keys we recursively scrub from vehicle ``.data`` payloads before exposing

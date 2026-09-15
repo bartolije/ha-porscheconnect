@@ -165,6 +165,7 @@
           "charging": "Laddar",
           "charging_completed": "Laddning slutförd",
           "charging_error": "Laddningsfel",
+          "charging_stopped": "Laddning stoppad",
           "initialising": "Initierar laddning",
           "instant_charging": "Direktladdning",
           "not_charging": "Laddar inte",
