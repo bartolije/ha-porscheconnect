@@ -119,7 +119,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         key="charging_power",
         translation_key="charging_power",
         measurement_node="CHARGING_RATE",
-        measurement_leaf="chargingPower",
+        measurement_leaf="chargingPowerkW",
         icon="mdi:lightning-bolt-circle",
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
@@ -142,7 +142,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="state_of_charge",
         measurement_node="BATTERY_LEVEL",
         measurement_leaf="percent",
-        icon="mdi:battery-medium",
+        # No explicit icon: the battery device class picks the level-aware one.
         device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,

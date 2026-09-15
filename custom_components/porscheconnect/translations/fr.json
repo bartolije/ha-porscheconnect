@@ -165,6 +165,7 @@
           "charging": "En charge",
           "charging_completed": "Charge terminée",
           "charging_error": "Erreur de charge",
+          "charging_stopped": "Charge interrompue",
           "initialising": "Initialisation de la charge",
           "instant_charging": "Charge instantanée",
           "not_charging": "Pas en charge",

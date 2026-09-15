@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import asyncio
 import copy
 import logging
 import operator
@@ -9,7 +10,6 @@ from datetime import timedelta
 from functools import reduce
 from typing import Any
 
-import async_timeout
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
@@ -34,7 +34,7 @@ from pyporscheconnectapi.exceptions import (
 )
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS
+from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS, TRANSIENT_AUTH_FIELDS
 
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
@@ -100,6 +100,26 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     from .services import async_setup_services
 
     async_setup_services(hass)
+    return True
+
+
+async def async_migrate_entry(
+    hass: HomeAssistant,
+    config_entry: PorscheConnectConfigEntry,
+) -> bool:
+    """Migrate a config entry to the current schema.
+
+    v1 → v2: drop the in-flight authentication secrets (captcha code, Auth0
+    state, PKCE verifier) that older releases persisted alongside the token.
+    They are single-use, so replaying them only breaks the next login.
+    """
+    if config_entry.version == 1:
+        data = {
+            key: value
+            for key, value in config_entry.data.items()
+            if key not in TRANSIENT_AUTH_FIELDS
+        }
+        hass.config_entries.async_update_entry(config_entry, data=data, version=2)
     return True
 
 
@@ -260,7 +280,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     await self._async_fetch_pictures(vehicle)
 
             else:
-                async with async_timeout.timeout(30):
+                async with asyncio.timeout(30):
                     for vehicle in self.vehicles:
                         await vehicle.get_stored_overview()
                         # Retry pictures if the initial fetch came back empty

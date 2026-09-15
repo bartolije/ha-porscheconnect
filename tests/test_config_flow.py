@@ -15,7 +15,13 @@ from pyporscheconnectapi.exceptions import (
 )
 from pytest_homeassistant_custom_component.common import MockConfigEntry
 
-from custom_components.porscheconnect.const import DOMAIN
+from custom_components.porscheconnect.const import (
+    CONF_CAPTCHA_CODE,
+    CONF_CODE_VERIFIER,
+    CONF_OAUTH_STATE,
+    DOMAIN,
+    TRANSIENT_AUTH_FIELDS,
+)
 
 from .conftest import TEST_EMAIL, TEST_PASSWORD, TEST_TOKEN
 
@@ -188,3 +194,55 @@ async def test_reauth_flow_updates_entry(hass: HomeAssistant) -> None:
     assert result["reason"] in {"reauth_successful", "reconfigure_successful"}
     assert entry.data[CONF_PASSWORD] == "new-password"
     assert entry.data[CONF_ACCESS_TOKEN] == new_token
+
+
+async def test_captcha_step_resumes_with_code_verifier(hass: HomeAssistant) -> None:
+    """The solved captcha must be replayed with the PKCE verifier of the
+    interrupted login — Auth0 rejects the resume without it — and none of
+    those single-use secrets may end up in the config entry.
+    """
+    import base64
+
+    svg = b'<svg width="150" height="50"></svg>'
+    captcha_uri = "data:image/svg+xml;base64," + base64.b64encode(svg).decode("ascii")
+
+    err = PorscheCaptchaRequiredError("captcha please")
+    err.captcha = captcha_uri
+    err.state = "state-token-xyz"
+    err.code_verifier = "verifier-abc"
+
+    challenged = MagicMock()
+    challenged.get_token = AsyncMock(side_effect=err)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
+    )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=challenged,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+    assert result["step_id"] == "captcha"
+
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(),
+    ) as connection_cls:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_CAPTCHA_CODE: "SOLVED"},
+        )
+        await hass.async_block_till_done()
+
+    kwargs = connection_cls.call_args.kwargs
+    assert kwargs[CONF_CAPTCHA_CODE] == "SOLVED"
+    assert kwargs[CONF_OAUTH_STATE] == "state-token-xyz"
+    assert kwargs[CONF_CODE_VERIFIER] == "verifier-abc"
+
+    assert result["type"] == FlowResultType.CREATE_ENTRY
+    assert TRANSIENT_AUTH_FIELDS.isdisjoint(result["data"])
+    assert result["data"][CONF_ACCESS_TOKEN] == TEST_TOKEN

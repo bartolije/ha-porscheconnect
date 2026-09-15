@@ -165,6 +165,7 @@
           "charging": "Aan het laden",
           "charging_completed": "Laden voltooid",
           "charging_error": "Laadfout",
+          "charging_stopped": "Laden gestopt",
           "initialising": "Laden initialiseren",
           "instant_charging": "Direct laden",
           "not_charging": "Niet aan het laden",

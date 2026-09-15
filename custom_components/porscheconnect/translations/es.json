@@ -165,6 +165,7 @@
           "charging": "Cargando",
           "charging_completed": "Carga completada",
           "charging_error": "Error de carga",
+          "charging_stopped": "Carga detenida",
           "initialising": "Iniciando la carga",
           "instant_charging": "Carga instantánea",
           "not_charging": "Sin cargar",
