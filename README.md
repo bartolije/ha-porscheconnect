@@ -99,11 +99,16 @@ enables privacy in the PCM, the `device_tracker` entity is not created.
 ## Installation
 
 The integration is delivered as a [HACS](https://hacs.xyz) custom integration.
+It requires Home Assistant 2026.11 or newer.
 
 ### HACS (recommended)
 
-1. In HACS, open **Integrations**.
-2. Search for **Porsche Connect** and select it.
+1. In HACS, open **Integrations**, then **⋮ → Custom repositories**, and add
+   `https://github.com/bartolije/ha-porscheconnect` with the type
+   **Integration**. (The **Porsche Connect** entry of the default HACS store is
+   the upstream integration; both install into `custom_components/porscheconnect`,
+   so keep only one of them.)
+2. Search for **Porsche Connect** and select the one from this repository.
 3. Click **Download**, then **Restart Home Assistant**.
 4. Go to **Settings → Devices & services → Add integration**, search
    **Porsche Connect**, and follow the configuration flow.
