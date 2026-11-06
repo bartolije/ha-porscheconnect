@@ -195,7 +195,8 @@ rules:
   inject-websession:
     status: done
     comment: |
-      ``get_async_client(hass)`` is forwarded to the API client.
+      A client from ``create_async_httpx_client(hass)`` is forwarded to the API
+      client (dedicated so that it can refuse zstd, which httpx2 fails to decode).
   strict-typing:
     status: todo
     comment: |

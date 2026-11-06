@@ -82,10 +82,8 @@ async def test_climatisation_start_service_converts_celsius_to_kelvin(
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    device = next(
-        d
-        for d in dr.async_get(hass).devices.values()
-        if (DOMAIN, mock_vehicle.vin) in d.identifiers
+    device = dr.async_get(hass).async_get_device_by_identifier(
+        (DOMAIN, mock_vehicle.vin), mock_config_entry.entry_id
     )
 
     await hass.services.async_call(

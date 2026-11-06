@@ -108,9 +108,10 @@ def _resolve_vehicle(
     config entry's coordinator at call time instead of capturing a single
     coordinator at registration.
     """
-    device_registry = dr.async_get(hass)
     device_id = service_call_data[ATTR_VEHICLE]
-    device_entry = device_registry.async_get(device_id)
+    device_entry, config_entry = dr.async_get_device_and_config_entry_for_domain(
+        hass, device_id, domain=DOMAIN
+    )
 
     if device_entry is None:
         raise ServiceValidationError(
@@ -125,13 +126,8 @@ def _resolve_vehicle(
         if identifier[0] == DOMAIN
     }
 
-    for entry_id in device_entry.config_entries:
-        config_entry = hass.config_entries.async_get_entry(entry_id)
-        if config_entry is None or config_entry.domain != DOMAIN:
-            continue
-        coordinator = getattr(config_entry, "runtime_data", None)
-        if coordinator is None:
-            continue
+    coordinator = getattr(config_entry, "runtime_data", None)
+    if coordinator is not None:
         for vehicle in coordinator.vehicles:
             if vehicle.vin in porsche_vins:
                 return vehicle
