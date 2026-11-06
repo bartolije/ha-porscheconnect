@@ -47,6 +47,14 @@ HTTP_UNAUTHORIZED = 401
 
 _AUTH_FAILED_MSG = "Authentication failed for Porsche Connect"
 
+# Entity keys of the upstream integration (CJNE/ha-porscheconnect) that are
+# named differently here, so that switching from it keeps the entities.
+_UPSTREAM_KEY_RENAMES = {
+    "main_service_range": "main_service_distance",
+    "oil_service_range": "oil_service_distance",
+    "intermediate_service_range": "intermediate_service_distance",
+}
+
 # Picture locations are cosmetic: when the API has none for a car, ask again
 # once a day rather than on every refresh of a rate-limited API.
 _PICTURE_RETRY_INTERVAL = timedelta(days=1)
@@ -150,8 +158,9 @@ async def _async_migrate_entity_unique_ids(
 ) -> None:
     """Migrate pre-VIN unique_ids (``{name}-{key}``) to the VIN scheme.
 
-    Older releases keyed entities off the (mutable) vehicle name; entities are
-    now keyed off the immutable VIN. Rewrite the registry in place so an upgrade
+    Older releases and the upstream integration keyed entities off the
+    (mutable) vehicle name; entities are now keyed off the immutable VIN.
+    Rewrite the registry in place so an upgrade, or a switch from upstream,
     reuses the existing entities instead of orphaning them as duplicates.
     """
     prefixes = [
@@ -161,13 +170,21 @@ async def _async_migrate_entity_unique_ids(
     ]
     if not prefixes:
         return
+    ent_reg = er.async_get(hass)
 
     @callback
     def _migrate(entity_entry: er.RegistryEntry) -> dict[str, str] | None:
         for old_prefix, new_prefix in prefixes:
             if entity_entry.unique_id.startswith(old_prefix):
-                suffix = entity_entry.unique_id[len(old_prefix):]
-                return {"new_unique_id": f"{new_prefix}{suffix}"}
+                key = entity_entry.unique_id[len(old_prefix):]
+                new_unique_id = f"{new_prefix}{_UPSTREAM_KEY_RENAMES.get(key, key)}"
+                # An entity left over from an earlier install may already hold
+                # the target id: keep it, the old one stays an orphan.
+                if ent_reg.async_get_entity_id(
+                    entity_entry.domain, DOMAIN, new_unique_id
+                ):
+                    return None
+                return {"new_unique_id": new_unique_id}
         return None
 
     await er.async_migrate_entries(hass, entry.entry_id, _migrate)

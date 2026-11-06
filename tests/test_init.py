@@ -172,6 +172,64 @@ async def test_unique_id_migration_renames_name_keyed_entities(
     assert migrated.unique_id == f"{mock_vehicle.vin}-mileage"
 
 
+
+async def test_unique_id_migration_from_upstream_keys(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """Upstream's service *_range keys map to *_distance, keeping the entity."""
+    from homeassistant.helpers import entity_registry as er
+
+    mock_vehicle.data["MAIN_SERVICE_RANGE"] = {"kilometers": 11200}
+    mock_config_entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    old = ent_reg.async_get_or_create(
+        "sensor",
+        DOMAIN,
+        f"{mock_vehicle.data['name']}-main_service_range",
+        config_entry=mock_config_entry,
+        suggested_object_id="garage_next_service_in",
+    )
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    migrated = ent_reg.async_get(old.entity_id)
+    assert migrated.unique_id == f"{mock_vehicle.vin}-main_service_distance"
+    assert hass.states.get(old.entity_id).state == "11200"
+
+
+async def test_unique_id_migration_skips_taken_target(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """A leftover entity already holding the VIN id does not break the setup."""
+    from homeassistant.helpers import entity_registry as er
+
+    mock_config_entry.add_to_hass(hass)
+    ent_reg = er.async_get(hass)
+    old = ent_reg.async_get_or_create(
+        "sensor", DOMAIN, f"{mock_vehicle.data['name']}-mileage",
+        config_entry=mock_config_entry,
+    )
+    ent_reg.async_get_or_create(
+        "sensor", DOMAIN, f"{mock_vehicle.vin}-mileage",
+        config_entry=mock_config_entry,
+    )
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert ent_reg.async_get(old.entity_id).unique_id.startswith(
+        mock_vehicle.data["name"]
+    )
+
 async def test_migrate_entry_drops_transient_auth_fields(
     hass: HomeAssistant,
     mock_account,  # noqa: ARG001
