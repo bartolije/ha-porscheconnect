@@ -1,0 +1,52 @@
+name: Weekly
+
+# Early warning between releases: the regular CI pins Home Assistant, this run
+# takes the newest one, and it reports new releases of the upstream projects.
+on:
+  schedule:
+    - cron: "0 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  latest-home-assistant:
+    name: Tests on the latest Home Assistant
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install requirements with the newest pytest-homeassistant
+        run: |
+          pip install -r requirements_test.txt
+          pip install --upgrade pytest-homeassistant
+          python -c "import homeassistant.const as c; print('Home Assistant', c.__version__)"
+      - name: Tests suite
+        run: pytest --timeout=9 -n auto -p no:sugar tests
+
+  upstream-releases:
+    name: Upstream releases
+    runs-on: ubuntu-latest
+    steps:
+      - name: Open an issue for each new upstream release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          since=$(date -u -d '8 days ago' +%Y-%m-%dT%H:%M:%SZ)
+          for upstream in CJNE/ha-porscheconnect CJNE/pyporscheconnectapi; do
+            gh api "repos/$upstream/releases?per_page=10" \
+              --jq ".[] | select(.draft | not) | select(.published_at > \"$since\") | [.tag_name, .html_url] | @tsv" |
+            while IFS=$'\t' read -r tag url; do
+              title="Upstream release: $upstream $tag"
+              existing=$(gh issue list --state all --label upstream --search "\"$title\" in:title" --json number --jq 'length')
+              if [ "$existing" = "0" ]; then
+                gh issue create --title "$title" --label upstream \
+                  --body "$upstream published $tag: $url. Check whether it carries Porsche API changes to port here."
+              fi
+            done
+          done
