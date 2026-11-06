@@ -323,20 +323,18 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
                 )
 
             except (InvalidAuth, CannotConnect) as err:
+                # The captcha and its login transaction are spent: showing the
+                # same image again can only fail. Start over from the
+                # credentials, which also asks for a fresh captcha (#23).
                 errors["base"] = (
                     "invalid_auth" if isinstance(err, InvalidAuth) else "cannot_connect"
                 )
                 return self.async_show_form(
-                    step_id="captcha",
-                    data_schema=vol.Schema(
-                        {
-                            vol.Required(CONF_CAPTCHA_CODE, default=vol.UNDEFINED): str,
-                        },
+                    step_id="user",
+                    data_schema=self.add_suggested_values_to_schema(
+                        STEP_USER_DATA_SCHEMA, {CONF_EMAIL: self.email}
                     ),
                     errors=errors,
-                    description_placeholders={
-                        "captcha_img": f'<img src="{self.captcha}" />',
-                    },
                 )
 
         return self._async_form_captcha()
