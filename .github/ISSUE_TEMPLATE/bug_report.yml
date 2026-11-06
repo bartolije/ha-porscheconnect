@@ -1,0 +1,54 @@
+name: Bug report
+description: Something does not work as expected
+labels: [bug]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What happened
+      description: What you did, what you expected, and what happened instead.
+    validations:
+      required: true
+  - type: input
+    id: ha_version
+    attributes:
+      label: Home Assistant version
+      placeholder: "2026.11.0"
+    validations:
+      required: true
+  - type: input
+    id: integration_version
+    attributes:
+      label: My Porsche Connect version
+      description: Shown in the Marketplace, or in Settings → Devices & services → My Porsche Connect.
+      placeholder: "0.5.4"
+    validations:
+      required: true
+  - type: input
+    id: vehicle
+    attributes:
+      label: Vehicle and country
+      placeholder: "Taycan 4S 2024, France"
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Diagnostics
+      description: >-
+        Settings → Devices & services → My Porsche Connect → ⋮ → Download diagnostics, then
+        attach the file here. The position, pairing codes, tokens and password are redacted.
+  - type: textarea
+    id: logs
+    attributes:
+      label: Debug logs
+      description: >-
+        Add the configuration below to configuration.yaml, restart, reproduce the problem and
+        paste the lines around the error. Remove your email address and any token.
+        ```yaml
+        logger:
+          logs:
+            custom_components.porscheconnect: debug
+            pyporscheconnectapi: debug
+        ```
+      render: text
