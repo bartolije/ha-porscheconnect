@@ -1,7 +1,8 @@
 name: Weekly
 
 # Early warning between releases: the regular CI pins Home Assistant, this run
-# takes the newest one, and it reports new releases of the upstream projects.
+# takes the newest one, it checks that Porsche still accepts the library, and it
+# reports new releases of the upstream projects.
 on:
   schedule:
     - cron: "0 5 * * 1"
@@ -27,6 +28,56 @@ jobs:
           python -c "import homeassistant.const as c; print('Home Assistant', c.__version__)"
       - name: Tests suite
         run: pytest --timeout=9 -n auto -p no:sugar tests
+
+  porsche-api:
+    name: Porsche still accepts the library
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.14"
+      - name: Install the pinned library
+        run: pip install "$(grep '^pyporscheconnectapi' requirements_test.txt)"
+      - name: Check the app version and the login client
+        id: check
+        # No account needed: the app asks the first endpoint whether its version is
+        # still supported, and the login page only opens for a known client.
+        run: |
+          python - <<'EOF' | tee result.txt
+          import sys
+
+          import httpx
+          from pyporscheconnectapi import const as c
+
+          problems = []
+          headers = {"User-Agent": c.USER_AGENT}
+          r = httpx.get("https://checks.ppa.porsche.com/app/support/v1/build", headers=headers, timeout=30)
+          if r.status_code != 200 or r.json().get("supported") is not True:
+              problems.append(f"App version `{c.USER_AGENT}` is no longer supported: HTTP {r.status_code} {r.text[:200]}")
+          r = httpx.get(c.AUTHORIZATION_URL, headers=headers, timeout=30, params={
+              "response_type": "code", "client_id": c.CLIENT_ID, "redirect_uri": c.REDIRECT_URI,
+              "audience": c.AUDIENCE, "scope": c.SCOPE, "state": "weekly-check",
+              "code_challenge": "E9Melhoa2OwvFrEMTJguCHaoeK1t8URWbuGJSstw-cM", "code_challenge_method": "S256",
+          })
+          if r.status_code != 302 or "/u/login" not in r.headers.get("location", ""):
+              problems.append(f"Login client `{c.CLIENT_ID}` is refused: HTTP {r.status_code}")
+          print("\n".join(problems) or f"OK: {c.USER_AGENT} supported, login client accepted")
+          sys.exit(1 if problems else 0)
+          EOF
+      - name: Open an issue
+        # Only for a real refusal; a network error fails the job without an issue.
+        if: failure() && steps.check.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          grep -q 'is no longer supported\|is refused' result.txt || exit 0
+          gh label create porsche-api --color B60205 --description "Porsche stopped accepting the library" --force
+          if [ "$(gh issue list --state open --label porsche-api --json number --jq length)" = "0" ]; then
+            gh issue create --title "Porsche no longer accepts the library" --label porsche-api \
+              --body "$(printf 'The weekly check failed:\n\n```\n%s\n```\n\nLogins will start failing. Update the app version or the login client in `pyporscheconnectapi/const.py` to what the current My Porsche app uses.' "$(cat result.txt)")"
+          fi
 
   upstream-releases:
     name: Upstream releases
