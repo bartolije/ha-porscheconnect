@@ -273,3 +273,60 @@ async def test_captcha_step_resumes_with_code_verifier(hass: HomeAssistant) -> N
     assert result["type"] == FlowResultType.CREATE_ENTRY
     assert TRANSIENT_AUTH_FIELDS.isdisjoint(result["data"])
     assert result["data"][CONF_ACCESS_TOKEN] == TEST_TOKEN
+
+
+async def test_captcha_step_error_restarts_login(hass: HomeAssistant) -> None:
+    """A refused captcha step goes back to the credentials, not to the spent
+    captcha, and the next try starts a new login with a fresh captcha (#23).
+    """
+    import base64
+
+    def challenged(state: str) -> MagicMock:
+        err = PorscheCaptchaRequiredError("captcha please")
+        err.captcha = "data:image/svg+xml;base64," + base64.b64encode(
+            f"<svg>{state}</svg>".encode()
+        ).decode("ascii")
+        err.state = state
+        err.code_verifier = f"verifier-{state}"
+        instance = MagicMock()
+        instance.get_token = AsyncMock(side_effect=err)
+        return instance
+
+    refused = MagicMock()
+    refused.get_token = AsyncMock(side_effect=PorscheWrongCredentialsError("nope"))
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
+    )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        side_effect=[challenged("first"), refused, challenged("second")],
+    ) as connection_cls:
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+        assert result["step_id"] == "captcha"
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_CAPTCHA_CODE: "WRONG"},
+        )
+        assert result["type"] == FlowResultType.FORM
+        assert result["step_id"] == "user"
+        assert result["errors"] == {"base": "invalid_auth"}
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+
+    assert result["step_id"] == "captcha"
+    assert "second" in base64.b64decode(
+        result["description_placeholders"]["captcha_img"].split(",", 1)[1].split('"')[0]
+    ).decode()
+    # The new login does not replay the spent captcha transaction.
+    last = connection_cls.call_args.kwargs
+    assert last[CONF_CAPTCHA_CODE] is None
+    assert last[CONF_OAUTH_STATE] is None
