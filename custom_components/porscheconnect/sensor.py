@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import datetime
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -15,14 +16,17 @@ from homeassistant.components.sensor import (
 from homeassistant.const import (
     PERCENTAGE,
     EntityCategory,
+    UnitOfEnergy,
     UnitOfLength,
     UnitOfPower,
     UnitOfPressure,
     UnitOfSpeed,
+    UnitOfTemperature,
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
@@ -46,7 +50,9 @@ class PorscheSensorEntityDescription(SensorEntityDescription):
     # Custom extractor for values that don't live at a fixed 2-level path
     # (e.g. per-tire pressure deltas under TIRE_PRESSURE.<tire>.<field>).
     # When present, takes priority over measurement_node / _leaf.
-    value_fn: Callable[[PorscheVehicle], float | int | str | None] | None = None
+    value_fn: (
+        Callable[[PorscheVehicle], float | int | str | datetime | None] | None
+    ) = None
     is_available: Callable[[PorscheVehicle], bool] = lambda v: v.has_porsche_connect
 
 
@@ -69,6 +75,35 @@ def _tire_delta(tire: str) -> Callable[[PorscheVehicle], float | None]:
         delta = leaf.get("differenceBar")
         return float(delta) if isinstance(delta, (int, float)) else None
     return _extract
+
+
+def _contract_end(v: PorscheVehicle) -> datetime | None:
+    """Return when the Porsche Connect contract ends (CONNECT_CONTRACT.until)."""
+    until = (v.data.get("CONNECT_CONTRACT") or {}).get("until")
+    return dt_util.parse_datetime(until) if isinstance(until, str) else None
+
+
+BATTERY_ENERGY_STATUSES = ["normal", "warning", "critical"]
+
+
+def _battery_energy_status(v: PorscheVehicle) -> str | None:
+    """Return BEM_LEVEL.status, or None for a value the enum doesn't know yet."""
+    status = str((v.data.get("BEM_LEVEL") or {}).get("status", "")).lower()
+    return status if status in BATTERY_ENERGY_STATUSES else None
+
+
+def _battery_temperature(v: PorscheVehicle) -> float | None:
+    """Return BATTERY_CONDITION.batteryTemperatureK in °C (HA doesn't convert K)."""
+    kelvin = (v.data.get("BATTERY_CONDITION") or {}).get("batteryTemperatureK")
+    return round(kelvin - 273.15, 1) if isinstance(kelvin, (int, float)) else None
+
+
+def _has_leaf(node: str, leaf: str) -> Callable[[PorscheVehicle], bool]:
+    """Gate on a field that only some vehicles fill in (e.g. fuel vs kWh)."""
+    return lambda v: (v.data.get(node) or {}).get(leaf) is not None
+
+
+_MONTHLY = "TRIP_STATISTICS_MONTHLY_REPORT"
 
 
 SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
@@ -258,6 +293,99 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         is_available=lambda v: v.has_tire_pressure_monitoring,
+    ),
+    PorscheSensorEntityDescription(
+        key="connect_contract_end",
+        translation_key="connect_contract_end",
+        value_fn=_contract_end,
+        icon="mdi:file-certificate-outline",
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_available=has_measurement("CONNECT_CONTRACT"),
+    ),
+    # The fields below come from the app's data models (My Porsche 21.26.44):
+    # vehicles that lack them get NOT_SUPPORTED, so no entity is created.
+    PorscheSensorEntityDescription(
+        key="monthly_distance",
+        translation_key="monthly_distance",
+        measurement_node=_MONTHLY,
+        measurement_leaf="distanceKm",
+        icon="mdi:map-marker-distance",
+        device_class=SensorDeviceClass.DISTANCE,
+        native_unit_of_measurement=UnitOfLength.KILOMETERS,
+        suggested_display_precision=0,
+        is_available=has_measurement(_MONTHLY),
+    ),
+    PorscheSensorEntityDescription(
+        key="monthly_driving_time",
+        translation_key="monthly_driving_time",
+        measurement_node=_MONTHLY,
+        measurement_leaf="drivingTimeMinutes",
+        icon="mdi:timer-outline",
+        device_class=SensorDeviceClass.DURATION,
+        native_unit_of_measurement=UnitOfTime.MINUTES,
+        is_available=has_measurement(_MONTHLY),
+    ),
+    PorscheSensorEntityDescription(
+        key="monthly_trips",
+        translation_key="monthly_trips",
+        measurement_node=_MONTHLY,
+        measurement_leaf="tripsTaken",
+        icon="mdi:road-variant",
+        is_available=has_measurement(_MONTHLY),
+    ),
+    PorscheSensorEntityDescription(
+        key="monthly_fuel_consumption",
+        translation_key="monthly_fuel_consumption",
+        measurement_node=_MONTHLY,
+        measurement_leaf="avgLiterPerHundredKm",
+        icon="mdi:gas-station",
+        native_unit_of_measurement="L/100km",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        is_available=_has_leaf(_MONTHLY, "avgLiterPerHundredKm"),
+    ),
+    PorscheSensorEntityDescription(
+        key="monthly_electric_consumption",
+        translation_key="monthly_electric_consumption",
+        measurement_node=_MONTHLY,
+        measurement_leaf="avgKwhPerHundredKm",
+        icon="mdi:lightning-bolt",
+        native_unit_of_measurement="kWh/100km",
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=1,
+        is_available=_has_leaf(_MONTHLY, "avgKwhPerHundredKm"),
+    ),
+    PorscheSensorEntityDescription(
+        key="battery_energy_status",
+        translation_key="battery_energy_status",
+        value_fn=_battery_energy_status,
+        icon="mdi:car-battery",
+        device_class=SensorDeviceClass.ENUM,
+        options=BATTERY_ENERGY_STATUSES,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_available=has_measurement("BEM_LEVEL"),
+    ),
+    PorscheSensorEntityDescription(
+        key="battery_temperature",
+        translation_key="battery_temperature",
+        value_fn=_battery_temperature,
+        device_class=SensorDeviceClass.TEMPERATURE,
+        native_unit_of_measurement=UnitOfTemperature.CELSIUS,
+        state_class=SensorStateClass.MEASUREMENT,
+        suggested_display_precision=0,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_available=has_measurement("BATTERY_CONDITION"),
+    ),
+    PorscheSensorEntityDescription(
+        key="charging_session_energy",
+        translation_key="charging_session_energy",
+        measurement_node="CHARGING_SESSION",
+        measurement_leaf="totalChargedEnergykWh",
+        device_class=SensorDeviceClass.ENERGY,
+        native_unit_of_measurement=UnitOfEnergy.KILO_WATT_HOUR,
+        suggested_display_precision=1,
+        is_available=has_measurement("CHARGING_SESSION"),
     ),
 ]
 

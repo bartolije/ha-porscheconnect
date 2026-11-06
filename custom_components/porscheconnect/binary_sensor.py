@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import Any
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
@@ -35,8 +36,23 @@ class PorscheBinarySensorEntityDescription(BinarySensorEntityDescription):
     measurement_node: str | None = None
     measurement_leaf: str | None = None
     value_fn: Callable[[PorscheVehicle], bool] | None = None
-    attr_fn: Callable[[PorscheVehicle], dict[str, str]] | None = None
+    attr_fn: Callable[[PorscheVehicle], dict[str, Any]] | None = None
     is_available: Callable[[PorscheVehicle], bool] = lambda v: v.has_porsche_connect
+
+
+def _cluster_alerts(v: PorscheVehicle) -> dict[str, list[str]]:
+    """Return INSTRUMENT_CLUSTER_ALERTS as lowercase alert names per level."""
+    alerts = v.data.get("INSTRUMENT_CLUSTER_ALERTS") or {}
+    return {
+        level: [str(a).lower() for a in alerts.get(level) or []]
+        for level in ("infos", "warnings", "criticals")
+    }
+
+
+def _cluster_problem(v: PorscheVehicle) -> bool:
+    """Return True when the dashboard shows a warning or a critical alert."""
+    alerts = _cluster_alerts(v)
+    return bool(alerts["warnings"] or alerts["criticals"])
 
 
 SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
@@ -104,6 +120,16 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         is_available=lambda v: v.has_tire_pressure_monitoring,
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
+    ),
+    PorscheBinarySensorEntityDescription(
+        # On when the dashboard shows a warning or a critical alert (oil level,
+        # tire pressure); the alert names are in the attributes.
+        key="instrument_cluster_alerts",
+        translation_key="instrument_cluster_alerts",
+        value_fn=_cluster_problem,
+        attr_fn=_cluster_alerts,
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        is_available=has_measurement("INSTRUMENT_CLUSTER_ALERTS"),
     ),
 ]
 

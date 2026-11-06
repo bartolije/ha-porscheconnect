@@ -102,6 +102,11 @@ integration only creates entities that the car can actually drive.
 | `sensor`        | `charging_finished`                                                | `has_electric_drivetrain`                                |
 | `sensor`        | `remaining_range_electric`                                         | `has_electric_drivetrain`                                |
 | `sensor`        | `last_update` (when the car last sent its data, diagnostic)        | `GLOBAL_TIMESTAMP` reported                              |
+| `sensor`        | `connect_contract_end` (diagnostic)                                | `CONNECT_CONTRACT` reported                              |
+| `sensor`        | `monthly_distance`, `monthly_driving_time`, `monthly_trips` ¹      | `TRIP_STATISTICS_MONTHLY_REPORT` reported                |
+| `sensor`        | `monthly_fuel_consumption`, `monthly_electric_consumption` ¹       | the matching field reported                              |
+| `sensor`        | `battery_energy_status`, `battery_temperature` (diagnostic) ¹      | `BEM_LEVEL`, `BATTERY_CONDITION` reported                |
+| `sensor`        | `charging_session_energy` ¹                                        | `CHARGING_SESSION` reported                              |
 | `sensor`        | `mileage`                                                          | `has_porsche_connect` (default)                          |
 | `sensor`        | `remaining_range`                                                  | `has_ice_drivetrain`                                     |
 | `sensor`        | `fuel_level`                                                       | `has_ice_drivetrain`                                     |
@@ -111,6 +116,7 @@ integration only creates entities that the car can actually drive.
 | `binary_sensor` | `remote_access`                                                    | `has_porsche_connect`                                    |
 | `binary_sensor` | `doors_and_lids`                                                   | `has_porsche_connect`                                    |
 | `binary_sensor` | `tire_pressure_status`                                             | `has_tire_pressure_monitoring`                           |
+| `binary_sensor` | `instrument_cluster_alerts` (oil level, tire pressure) ¹           | `INSTRUMENT_CLUSTER_ALERTS` reported                     |
 | `device_tracker`| Vehicle location                                                   | `has_porsche_connect` and `privacy_mode == false`        |
 | `image`         | `front_view`, `side_view`, `rear_view`, `rear_top_view`, `top_view`| Pictures returned by the API                             |
 | `lock`          | Door lock                                                          | `has_porsche_connect` (unlock needs S-PIN)               |
@@ -121,6 +127,11 @@ integration only creates entities that the car can actually drive.
 | `button`        | `flash_indicators`                                                 | `has_remote_services`                                    |
 | `button`        | `honk_and_flash_indicators`                                        | `has_remote_services`                                    |
 | `button`        | `get_current_overview`                                             | `has_remote_services` (forces a fresh pull from the car) |
+
+¹ Built from the data models of the My Porsche app (21.26.44), not yet seen on a
+car: a 718 reports them as not supported. If your car shows one of them, please
+check the value against the app and open an issue with the diagnostics attached
+(device page, ⋮ menu, "Download diagnostics"), whether it is right or wrong.
 
 The privacy mode flag is honoured by the vehicle itself — when the driver
 enables privacy in the PCM, the `device_tracker` entity is not created; it is

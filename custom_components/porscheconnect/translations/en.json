@@ -112,6 +112,9 @@
       },
       "service_flap": {
         "name": "Service flap"
+      },
+      "instrument_cluster_alerts": {
+        "name": "Instrument cluster alerts"
       }
     },
     "image": {
@@ -208,6 +211,38 @@
       },
       "intermediate_service_time": {
         "name": "Time to intermediate service"
+      },
+      "connect_contract_end": {
+        "name": "Porsche Connect contract end"
+      },
+      "monthly_distance": {
+        "name": "Monthly report distance"
+      },
+      "monthly_driving_time": {
+        "name": "Monthly report driving time"
+      },
+      "monthly_trips": {
+        "name": "Monthly report trips"
+      },
+      "monthly_fuel_consumption": {
+        "name": "Monthly report fuel consumption"
+      },
+      "monthly_electric_consumption": {
+        "name": "Monthly report electric consumption"
+      },
+      "battery_energy_status": {
+        "name": "Battery energy status",
+        "state": {
+          "normal": "Normal",
+          "warning": "Warning",
+          "critical": "Critical"
+        }
+      },
+      "battery_temperature": {
+        "name": "Battery temperature"
+      },
+      "charging_session_energy": {
+        "name": "Energy charged in the last session"
       }
     },
     "number": {

@@ -112,6 +112,9 @@
       },
       "service_flap": {
         "name": "Tapa de servicio"
+      },
+      "instrument_cluster_alerts": {
+        "name": "Alertas del cuadro de instrumentos"
       }
     },
     "image": {
@@ -208,6 +211,38 @@
       },
       "intermediate_service_time": {
         "name": "Tiempo hasta el mantenimiento intermedio"
+      },
+      "connect_contract_end": {
+        "name": "Fin del contrato Porsche Connect"
+      },
+      "monthly_distance": {
+        "name": "Informe mensual: distancia"
+      },
+      "monthly_driving_time": {
+        "name": "Informe mensual: tiempo de conducción"
+      },
+      "monthly_trips": {
+        "name": "Informe mensual: trayectos"
+      },
+      "monthly_fuel_consumption": {
+        "name": "Informe mensual: consumo de combustible"
+      },
+      "monthly_electric_consumption": {
+        "name": "Informe mensual: consumo eléctrico"
+      },
+      "battery_energy_status": {
+        "name": "Estado de energía de la batería",
+        "state": {
+          "normal": "Normal",
+          "warning": "Advertencia",
+          "critical": "Crítico"
+        }
+      },
+      "battery_temperature": {
+        "name": "Temperatura de la batería"
+      },
+      "charging_session_energy": {
+        "name": "Energía cargada en la última sesión"
       }
     },
     "number": {
