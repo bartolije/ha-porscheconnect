@@ -10,7 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: astral-sh/ruff-action@v4
+      - uses: astral-sh/ruff-action@v4.1.0
         with:
           # Pinned: an unpinned action pulls the newest ruff, whose freshly
           # stabilised rules break CI out of the blue (select ALL).
