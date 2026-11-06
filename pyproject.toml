@@ -9,4 +9,8 @@ ignore = [ "ANN401", "ARG001", "ARG002", "CPY", "PLR0917", "TC001", "TC002", "TC
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
+asyncio_default_fixture_loop_scope = "function"
+# Let Home Assistant install its httpx alias before respx is imported.
+addopts = "-p no:respx"
+pythonpath = ["."]
 testpaths = ["tests"]

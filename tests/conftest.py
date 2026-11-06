@@ -8,26 +8,13 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.porscheconnect.const import DOMAIN
-
-# Enables the pytest-homeassistant-custom-component plugin and its fixtures
-# (notably `hass`, `enable_custom_integrations`).
-pytest_plugins = ("pytest_homeassistant_custom_component",)
-
 
 TEST_EMAIL = "tester@example.com"
 TEST_PASSWORD = "hunter2"
 TEST_TOKEN = {"access_token": "abc123", "expires_in": 3600}
-
-
-@pytest.fixture(autouse=True)
-def auto_enable_custom_integrations(
-    enable_custom_integrations,  # noqa: ARG001
-):
-    """Enable loading of the porscheconnect custom component during tests."""
-    yield
 
 
 @pytest.fixture

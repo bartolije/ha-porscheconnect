@@ -9,7 +9,6 @@ from typing import Any
 import voluptuous as vol
 from homeassistant import exceptions
 from homeassistant.config_entries import (
-    CONN_CLASS_CLOUD_POLL,
     SOURCE_REAUTH,
     SOURCE_RECONFIGURE,
     ConfigEntry,
@@ -89,7 +88,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Porsche Connect."""
 
     VERSION = 2
-    CONNECTION_CLASS = CONN_CLASS_CLOUD_POLL
 
     email = None
     password = None

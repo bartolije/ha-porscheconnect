@@ -9,11 +9,12 @@ from homeassistant.config_entries import ConfigEntryState
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.helpers.httpx_client import get_async_client
 from pyporscheconnectapi.exceptions import (
     PorscheExceptionError,
     PorscheWrongCredentialsError,
 )
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.porscheconnect.const import (
     CONF_CAPTCHA_CODE,
@@ -44,6 +45,27 @@ async def test_async_setup_entry_success(
     assert len(coordinator.vehicles) == 1
     mock_account.get_vehicles.assert_awaited_once()
 
+
+
+async def test_async_setup_entry_client_does_not_accept_zstd(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """The API client must not request zstd bodies, which httpx2 fails to decode."""
+    mock_config_entry.add_to_hass(hass)
+
+    with patch(
+        "custom_components.porscheconnect.Connection",
+        return_value=mock_connection_cls.instance,
+    ) as connection_cls:
+        assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    client = connection_cls.call_args.kwargs["async_client"]
+    assert client is not get_async_client(hass)
+    assert client.headers["Accept-Encoding"] == "gzip, deflate"
 
 async def test_async_setup_entry_auth_failure(
     hass: HomeAssistant,

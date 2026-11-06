@@ -95,7 +95,7 @@ async def test_set_temperature_while_on_reapplies_converted_target():
 
     await climate.async_set_temperature(**{ATTR_TEMPERATURE: 22.0})
 
-    assert climate.target_temperature == 22.0
+    assert climate.native_target_temperature == 22.0
     kwargs = vehicle.remote_services.climatise_on.await_args.kwargs
     assert kwargs["target_temperature"] == pytest.approx(295.15)  # 22 + 273.15
 
@@ -110,7 +110,7 @@ async def test_set_temperature_while_off_stores_without_command():
 
     await climate.async_set_temperature(**{ATTR_TEMPERATURE: 18.0})
 
-    assert climate.target_temperature == 18.0
+    assert climate.native_target_temperature == 18.0
     vehicle.remote_services.climatise_on.assert_not_awaited()
     climate.async_write_ha_state.assert_called_once()
 

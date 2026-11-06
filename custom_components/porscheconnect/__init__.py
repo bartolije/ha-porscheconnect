@@ -18,7 +18,7 @@ from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
 from homeassistant.helpers.device_registry import DeviceInfo
-from homeassistant.helpers.httpx_client import get_async_client
+from homeassistant.helpers.httpx_client import create_async_httpx_client
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import (
     CoordinatorEntity,
@@ -157,7 +157,11 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> bool:
     """Set up this integration using UI."""
-    async_client = get_async_client(hass)
+    # The Porsche API returns zstd bodies that httpx2 (HA 2026.11+) cannot decode,
+    # so use a dedicated client that does not advertise zstd. The header is set on
+    # the client because create_async_httpx_client only merges headers= since 2026.2.
+    async_client = create_async_httpx_client(hass)
+    async_client.headers["Accept-Encoding"] = "gzip, deflate"
     connection = Connection(
         entry.data.get("email"),
         entry.data.get("password"),
@@ -403,3 +407,11 @@ class PorscheBaseEntity(CoordinatorEntity):
         """When entity is added to hass."""
         await super().async_added_to_hass()
         self._handle_coordinator_update()
+
+    @callback
+    def async_entity_id_changed(self, old_entity_id: str) -> None:
+        """Let Home Assistant rename the entity in place.
+
+        Nothing here depends on the entity_id, so there is nothing to re-key.
+        """
+        super().async_entity_id_changed(old_entity_id)

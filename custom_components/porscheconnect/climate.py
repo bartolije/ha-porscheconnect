@@ -66,7 +66,7 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
 
     # Primary feature of the device → named after the vehicle.
     _attr_name = None
-    _attr_temperature_unit = UnitOfTemperature.CELSIUS
+    _attr_native_temperature_unit = UnitOfTemperature.CELSIUS
     _attr_hvac_modes = _HVAC_MODES
     _attr_supported_features = (
         ClimateEntityFeature.TARGET_TEMPERATURE
@@ -87,7 +87,7 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
         self._attr_unique_id = f"{self._vin}-climate"
         # The API reports on/off but not the previously-requested target, so we
         # keep an optimistic target the user can adjust.
-        self._attr_target_temperature = _DEFAULT_TEMP_C
+        self._attr_native_target_temperature = _DEFAULT_TEMP_C
 
     @property
     def hvac_mode(self) -> HVACMode:
@@ -111,7 +111,7 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
         temperature = kwargs.get(ATTR_TEMPERATURE)
         if temperature is None:
             return
-        self._attr_target_temperature = temperature
+        self._attr_native_target_temperature = temperature
         if self.vehicle.remote_climatise_on:
             await self._async_apply(turn_on=True)
         else:
@@ -121,8 +121,9 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
         """Send the climatise start/stop command and refresh listeners."""
         try:
             if turn_on:
+                target_kelvin = self._attr_native_target_temperature + _KELVIN_OFFSET
                 await self.vehicle.remote_services.climatise_on(
-                    target_temperature=self._attr_target_temperature + _KELVIN_OFFSET,
+                    target_temperature=target_kelvin,
                 )
             else:
                 await self.vehicle.remote_services.climatise_off()

@@ -68,8 +68,8 @@ and you are encouraged to add new ones.
 You can run the tests using the following commands from the root folder:
 
 ```bash
-# Create a virtual environment
-python3 -m venv venv
+# Create a virtual environment (Python 3.14.2 or newer, as Home Assistant)
+python3.14 -m venv venv
 source venv/bin/activate
 # Install requirements
 pip install -r requirements_test.txt

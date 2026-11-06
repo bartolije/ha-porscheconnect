@@ -13,7 +13,7 @@ from pyporscheconnectapi.exceptions import (
     PorscheCaptchaRequiredError,
     PorscheWrongCredentialsError,
 )
-from pytest_homeassistant_custom_component.common import MockConfigEntry
+from pytest_homeassistant.common import MockConfigEntry
 
 from custom_components.porscheconnect.const import (
     CONF_CAPTCHA_CODE,
