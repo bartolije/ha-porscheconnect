@@ -100,6 +100,24 @@ You can run the tests on all repository file with the command:
 $ pre-commit run --all-files
 ```
 
+## Releasing
+
+The integration depends on its own library,
+[pyporscheconnectapi-bartolije](https://github.com/bartolije/pyporscheconnectapi),
+pinned to an exact version in `manifest.json` and `requirements_test.txt`.
+When a change needs a new library version, release in this order:
+
+1. **Library first.** Merge the change in the library repository, bump the version
+   in its `setup.py` and publish a GitHub release: the release workflow uploads it
+   to PyPI.
+2. **Then the integration.** Open the pull request that raises the pinned version.
+   Its CI installs the library from PyPI, so the tests and mypy jobs fail with
+   "No matching distribution found" until step 1 is done; once the library is on
+   PyPI, re-run the CI.
+3. Merge when the CI is green (required to merge into `main`), bump `version` in
+   `manifest.json` if not done yet, and publish a GitHub release whose tag is that
+   version. The Marketplace offers releases, not commits on `main`.
+
 ## License
 
 By contributing, you agree that your contributions will be licensed under its MIT License.
