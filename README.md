@@ -1,4 +1,4 @@
-# Porsche Connect for Home Assistant
+# Porsche Connect for Home Assistant (bartolije fork)
 
 [![GitHub Release][releases-shield]][releases]
 [![GitHub Activity][commits-shield]][commits]
@@ -21,6 +21,31 @@ Connect subscription and are paired to a My Porsche account.
 
 > This integration does **not** support *Porsche Car Connect* — that is a
 > separate, older Porsche service with its own backend.
+
+## About this fork
+
+This repository is a fork of
+[CJNE/ha-porscheconnect](https://github.com/CJNE/ha-porscheconnect), the
+Porsche Connect integration by [Johan Isacsson](https://github.com/CJNE) and
+its contributors, maintained by [bartolije](https://github.com/bartolije). It
+uses a fork of the library as well:
+[pyporscheconnectapi-bartolije](https://pypi.org/project/pyporscheconnectapi-bartolije/)
+([bartolije/pyporscheconnectapi](https://github.com/bartolije/pyporscheconnectapi),
+forked from [CJNE/pyporscheconnectapi](https://github.com/CJNE/pyporscheconnectapi)).
+
+Both integrations use the same `porscheconnect` domain, so only one of them can
+be installed at a time. What this fork adds:
+
+- support for the current Home Assistant releases (2026.11 and newer);
+- a `climate` entity, one binary sensor per door, window and lid, and a pressure
+  deviation sensor per tire;
+- a reauthentication prompt when Porsche asks for a captcha, instead of endless
+  retries;
+- diagnostics with the position, pairing codes and key data redacted;
+- when switching from the upstream integration, the existing entities are kept
+  with their entity IDs and history.
+
+Fixes that also apply upstream are sent back as pull requests.
 
 ## Features
 
