@@ -121,7 +121,8 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
         """Send the climatise start/stop command and refresh listeners."""
         try:
             if turn_on:
-                target_kelvin = self._attr_native_target_temperature + _KELVIN_OFFSET
+                target = self._attr_native_target_temperature or _DEFAULT_TEMP_C
+                target_kelvin = target + _KELVIN_OFFSET
                 await self.vehicle.remote_services.climatise_on(
                     target_temperature=target_kelvin,
                 )
