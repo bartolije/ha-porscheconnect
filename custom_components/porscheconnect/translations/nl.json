@@ -112,6 +112,9 @@
       },
       "service_flap": {
         "name": "Serviceklep"
+      },
+      "instrument_cluster_alerts": {
+        "name": "Meldingen op het instrumentenpaneel"
       }
     },
     "image": {
@@ -208,6 +211,38 @@
       },
       "intermediate_service_time": {
         "name": "Tijd tot tussentijdse onderhoudsbeurt"
+      },
+      "connect_contract_end": {
+        "name": "Einde Porsche Connect-contract"
+      },
+      "monthly_distance": {
+        "name": "Maandrapport afstand"
+      },
+      "monthly_driving_time": {
+        "name": "Maandrapport rijtijd"
+      },
+      "monthly_trips": {
+        "name": "Maandrapport ritten"
+      },
+      "monthly_fuel_consumption": {
+        "name": "Maandrapport brandstofverbruik"
+      },
+      "monthly_electric_consumption": {
+        "name": "Maandrapport stroomverbruik"
+      },
+      "battery_energy_status": {
+        "name": "Energiestatus van de accu",
+        "state": {
+          "normal": "Normaal",
+          "warning": "Waarschuwing",
+          "critical": "Kritiek"
+        }
+      },
+      "battery_temperature": {
+        "name": "Accutemperatuur"
+      },
+      "charging_session_energy": {
+        "name": "Geladen energie bij de laatste laadbeurt"
       }
     },
     "number": {
