@@ -27,6 +27,7 @@ from homeassistant.helpers.update_coordinator import (
     UpdateFailed,
 )
 from homeassistant.util import dt as dt_util
+from homeassistant.util.hass_dict import HassKey
 from pyporscheconnectapi.account import PorscheConnectAccount
 from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
@@ -123,6 +124,25 @@ def async_create_porsche_client(hass: HomeAssistant) -> httpx2.AsyncClient:
     return client
 
 
+_ENTRY_CLIENTS: HassKey[dict[str, httpx2.AsyncClient]] = HassKey(
+    f"{DOMAIN}_entry_clients"
+)
+
+
+def _async_get_entry_client(hass: HomeAssistant, entry_id: str) -> httpx2.AsyncClient:
+    """Return the entry's client, created once per account.
+
+    HA only closes these clients at shutdown, so setup retries and reloads reuse
+    it. One per entry: the Auth0 session lives in the cookies, and a new setup
+    starts without the previous one, as a new client would.
+    """
+    clients = hass.data.setdefault(_ENTRY_CLIENTS, {})
+    if (client := clients.get(entry_id)) is None:
+        client = clients[entry_id] = async_create_porsche_client(hass)
+    client.cookies.clear()
+    return client
+
+
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the Porsche Connect integration (domain-level).
 
@@ -203,7 +223,7 @@ async def async_setup_entry(
     connection = Connection(
         entry.data.get("email"),
         entry.data.get("password"),
-        async_client=async_create_porsche_client(hass),
+        async_client=_async_get_entry_client(hass, entry.entry_id),
         token=entry.data.get(CONF_ACCESS_TOKEN, None),
     )
 
