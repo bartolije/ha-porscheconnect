@@ -16,6 +16,7 @@ from pyporscheconnectapi.exceptions import (
 )
 from pytest_homeassistant.common import MockConfigEntry
 
+from custom_components.porscheconnect import _async_get_entry_client
 from custom_components.porscheconnect.const import (
     CONF_CAPTCHA_CODE,
     CONF_CODE_VERIFIER,
@@ -66,6 +67,21 @@ async def test_async_setup_entry_client_does_not_accept_zstd(
     client = connection_cls.call_args.kwargs["async_client"]
     assert client is not get_async_client(hass)
     assert client.headers["Accept-Encoding"] == "gzip, deflate"
+
+    # HA only closes these clients at shutdown: a reload must reuse the entry's
+    # client, without the previous Auth0 session cookies.
+    client.cookies.set("auth0", "previous-session")
+    with patch(
+        "custom_components.porscheconnect.Connection",
+        return_value=mock_connection_cls.instance,
+    ) as connection_cls:
+        assert await hass.config_entries.async_reload(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert connection_cls.call_args.kwargs["async_client"] is client
+    assert not client.cookies
+    # A second account never shares the first one's Auth0 cookies.
+    assert _async_get_entry_client(hass, "another_entry") is not client
 
 async def test_async_setup_entry_auth_failure(
     hass: HomeAssistant,
