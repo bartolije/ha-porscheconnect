@@ -83,12 +83,13 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         finally:
             self.coordinator.async_update_listeners()
 
-    async def async_unlock(self, **kwargs: dict) -> None:
+    async def async_unlock(self, **kwargs: Any) -> None:
         """Unlock the vehicle."""
         pin = kwargs.get("code")
 
         if pin is None:
-            lock_options = self.registry_entry.options.get(LOCK_DOMAIN) or {}
+            options = self.registry_entry.options if self.registry_entry else {}
+            lock_options: dict[str, Any] = options.get(LOCK_DOMAIN) or {}
             pin = lock_options.get(CONF_DEFAULT_CODE)
 
         if pin:

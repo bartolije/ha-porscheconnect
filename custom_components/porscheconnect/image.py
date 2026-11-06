@@ -8,12 +8,12 @@ from homeassistant.components.image import Image, ImageEntity, ImageEntityDescri
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
+from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
     PorscheBaseEntity,
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
-    PorscheVehicle,
 )
 
 CONTENT_TYPE = "image/png"

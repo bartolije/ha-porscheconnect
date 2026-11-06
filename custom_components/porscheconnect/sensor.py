@@ -14,6 +14,7 @@ from homeassistant.components.sensor import (
 )
 from homeassistant.const import (
     PERCENTAGE,
+    EntityCategory,
     UnitOfLength,
     UnitOfPower,
     UnitOfPressure,
@@ -21,7 +22,6 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -29,6 +29,7 @@ from . import (
     PorscheBaseEntity,
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
+    has_measurement,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -294,7 +295,7 @@ def _service_descriptions() -> list[PorscheSensorEntityDescription]:
                 suggested_display_precision=0,
                 entity_category=EntityCategory.DIAGNOSTIC,
                 entity_registry_enabled_default=enabled,
-                is_available=lambda v, _n=range_node: _n in v.data,
+                is_available=has_measurement(range_node),
             ),
         )
         descriptions.append(
@@ -310,7 +311,7 @@ def _service_descriptions() -> list[PorscheSensorEntityDescription]:
                 suggested_display_precision=0,
                 entity_category=EntityCategory.DIAGNOSTIC,
                 entity_registry_enabled_default=enabled,
-                is_available=lambda v, _n=time_node: _n in v.data,
+                is_available=has_measurement(time_node),
             ),
         )
     return descriptions

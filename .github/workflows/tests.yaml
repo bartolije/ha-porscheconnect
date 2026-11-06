@@ -38,6 +38,23 @@ jobs:
       - name: Hassfest validation
         uses: "home-assistant/actions/hassfest@master"
 
+  mypy:
+    runs-on: "ubuntu-latest"
+    name: mypy
+    steps:
+      - name: Check out code from GitHub
+        uses: "actions/checkout@v7"
+      - name: Setup Python ${{ env.DEFAULT_PYTHON }}
+        uses: "actions/setup-python@v7"
+        with:
+          python-version: ${{ env.DEFAULT_PYTHON }}
+      - name: Install requirements
+        run: |
+          pip install --constraint=.github/workflows/constraints.txt pip
+          pip install -r requirements_test.txt mypy==2.4.1
+      - name: Type check
+        run: mypy
+
   tests:
     runs-on: "ubuntu-latest"
     name: Run tests

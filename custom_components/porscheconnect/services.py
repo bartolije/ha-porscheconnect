@@ -4,8 +4,9 @@ from __future__ import annotations
 
 import logging
 from collections.abc import Mapping
+from typing import Any
 
-import voluptuous as vol
+import probatio as vol
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -39,7 +40,7 @@ _ZONE_ATTR_TO_API_KEY: dict[str, str] = {
 
 def _resolve_climate_zone_kwargs(
     vehicle: PorscheVehicle,
-    service_data: Mapping,
+    service_data: Mapping[str, Any],
 ) -> dict[str, bool]:
     """Filter requested seat-heating zones against the vehicle's capabilities.
 
@@ -94,7 +95,7 @@ SERVICE_CLIMATISATION_STOP = "climatisation_stop"
 
 
 def _resolve_vehicle(
-    hass: HomeAssistant, service_call_data: Mapping
+    hass: HomeAssistant, service_call_data: Mapping[str, Any]
 ) -> PorscheVehicle:
     """Resolve a PorscheVehicle from the device id given in service data.
 

@@ -11,8 +11,8 @@ from homeassistant.components.binary_sensor import (
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -20,6 +20,7 @@ from . import (
     PorscheBaseEntity,
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
+    has_measurement,
 )
 
 _LOGGER = logging.getLogger(__name__)
@@ -182,7 +183,7 @@ def _open_state_descriptions() -> list[PorscheBinarySensorEntityDescription]:
                 # Capability gate: the API only includes the key for
                 # components the car physically has. Mirrors the climate
                 # zones fix (#292): missing key == not available.
-                is_available=lambda v, _k=api_key: _k in v.data,
+                is_available=has_measurement(api_key),
             ),
         )
     return descriptions

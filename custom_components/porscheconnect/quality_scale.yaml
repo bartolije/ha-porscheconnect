@@ -198,11 +198,7 @@ rules:
       A client from ``create_async_httpx_client(hass)`` is forwarded to the API
       client (dedicated so that it can refuse zstd, which httpx2 fails to decode).
   strict-typing:
-    status: todo
+    status: done
     comment: |
-      All integration modules are now fully type-annotated and the ruff ANN
-      rules (ANN001/201/202/204) are enforced in CI. A full mypy --strict run
-      still reports Home Assistant base-class artifacts (Optional config_entry /
-      registry_entry, capability-lambda inference) that rely on HA's mypy
-      plugin, which only runs for core integrations — so the formal "added to
-      HA core's .strict-typing CI" rule is not applicable to a custom fork.
+      mypy --strict runs in CI (configuration in pyproject.toml). The library
+      ships no type information, so it is treated as untyped.

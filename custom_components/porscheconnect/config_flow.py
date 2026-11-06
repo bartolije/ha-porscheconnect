@@ -6,7 +6,7 @@ import base64
 import logging
 from typing import TYPE_CHECKING, Any
 
-import voluptuous as vol
+import probatio as vol
 from homeassistant import exceptions
 from homeassistant.config_entries import (
     SOURCE_REAUTH,
@@ -49,7 +49,7 @@ async def validate_input(
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
     """
-    token: dict = {}
+    token: dict[str, Any] = {}
     try:
         conn = Connection(
             email=data[CONF_EMAIL],
@@ -91,16 +91,16 @@ async def validate_input(
     return {"title": data[CONF_EMAIL], CONF_ACCESS_TOKEN: token}
 
 
-class ConfigFlow(ConfigFlow, domain=DOMAIN):
+class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Porsche Connect."""
 
     VERSION = 2
 
-    email = None
-    password = None
-    captcha = None
-    state = None
-    code_verifier = None
+    email: str | None = None
+    password: str | None = None
+    captcha: str | None = None
+    state: str | None = None
+    code_verifier: str | None = None
     _client: httpx2.AsyncClient | None = None
 
     @callback
@@ -142,7 +142,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self,
         email: str,
         password: str,
-        access_token: dict | None,
+        access_token: dict[str, Any] | None,
     ) -> dict[str, Any]:
         """Build the config entry data, without the in-flight auth secrets.
 
@@ -273,7 +273,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
     async def async_step_captcha(
         self,
-        user_input: dict[str, str] | None = None,
+        user_input: dict[str, Any] | None = None,
     ) -> ConfigFlowResult:
         """Captcha verification step."""
         if user_input is not None:
@@ -335,7 +335,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                     ),
                     errors=errors,
                     description_placeholders={
-                        "captcha_img": '<img src="' + self.captcha + '" />',
+                        "captcha_img": f'<img src="{self.captcha}" />',
                     },
                 )
 
@@ -369,7 +369,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                 },
             ),
             description_placeholders={
-                "captcha_img": '<img src="' + self.captcha + '" />',
+                "captcha_img": f'<img src="{self.captcha}" />',
             },
         )
 

@@ -6,6 +6,7 @@ import asyncio
 import copy
 import logging
 import operator
+from collections.abc import Callable
 from datetime import datetime, timedelta
 from functools import reduce
 from typing import TYPE_CHECKING, Any
@@ -77,7 +78,7 @@ def _is_auth_error(exc: PorscheExceptionError) -> bool:
     return getattr(exc, "code", None) == HTTP_UNAUTHORIZED
 
 
-def get_from_dict(datadict: dict, keystring: str) -> Any:
+def get_from_dict(datadict: dict[str, Any] | None, keystring: str) -> Any:
     """Safely get value from dict."""
     maplist = keystring.split(".")
 
@@ -89,11 +90,16 @@ def get_from_dict(datadict: dict, keystring: str) -> Any:
     return reduce(safe_getitem, maplist, datadict)
 
 
+def has_measurement(key: str) -> Callable[[PorscheVehicle], bool]:
+    """Return a check that the vehicle reports the given measurement."""
+    return lambda vehicle: key in vehicle.data
+
+
 @callback
 def _async_save_token(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    access_token: dict,
+    access_token: dict[str, Any],
 ) -> None:
     hass.config_entries.async_update_entry(
         config_entry,
@@ -239,6 +245,8 @@ async def async_setup_entry(
 class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
     """Class to manage fetching Porsche data."""
 
+    config_entry: PorscheConnectConfigEntry
+
     def __init__(
         self,
         hass: HomeAssistant,
@@ -270,9 +278,11 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     def get_vehicle_data_leaf(
-        self, vehicle: PorscheVehicle, node: str, leaf: str,
+        self, vehicle: PorscheVehicle, node: str | None, leaf: str | None,
     ) -> Any:
         """Get data value leaf from dict."""
+        if node is None or leaf is None:
+            return None
         return get_from_dict(get_from_dict(vehicle.data, node), leaf)
 
     async def _async_fetch_pictures(self, vehicle: PorscheVehicle) -> None:
@@ -292,7 +302,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         last = self._picture_attempts.get(vehicle.vin)
         return last is None or dt_util.utcnow() - last >= _PICTURE_RETRY_INTERVAL
 
-    async def _async_update_data(self) -> dict:
+    async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint."""
         try:
             if len(self.vehicles) == 0:
@@ -391,7 +401,7 @@ class PorscheBaseEntity(CoordinatorEntity):
         self.vehicle = vehicle
         # Cache the VIN locally so unique_ids and device identifiers stay
         # stable even if the user renames the car in the Porsche app.
-        self._vin = vehicle.vin
+        self._vin: str = vehicle.vin
 
         self._attr_device_info = DeviceInfo(
             identifiers={(DOMAIN, self._vin)},

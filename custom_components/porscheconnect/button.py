@@ -7,9 +7,9 @@ from dataclasses import dataclass
 from typing import Any
 
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
+from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity import EntityCategory
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle

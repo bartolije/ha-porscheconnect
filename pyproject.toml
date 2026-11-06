@@ -14,3 +14,15 @@ asyncio_default_fixture_loop_scope = "function"
 addopts = "-p no:respx"
 pythonpath = ["."]
 testpaths = ["tests"]
+
+[tool.mypy]
+python_version = "3.14"
+strict = true
+warn_unreachable = true
+files = ["custom_components/porscheconnect"]
+
+[[tool.mypy.overrides]]
+# The library ships no type information (no py.typed marker).
+module = ["pyporscheconnectapi", "pyporscheconnectapi.*"]
+ignore_missing_imports = true
+follow_imports = "skip"
