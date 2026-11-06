@@ -22,15 +22,12 @@ from custom_components.porscheconnect.services import (
 
 
 def _vehicle(**zones) -> SimpleNamespace:
-    """A vehicle stand-in whose CLIMATIZER_STATE advertises the given zones.
+    """A vehicle stand-in whose HVAC_SUMMARY advertises the given zones.
 
     `zones` maps camelCase API keys (frontLeft/...) to their enabled flag; the
     KEYS are what the helper treats as "supported", regardless of value.
     """
-    return SimpleNamespace(
-        vin="VIN1",
-        data={"CLIMATIZER_STATE": {"climateZonesEnabled": dict(zones)}},
-    )
+    return SimpleNamespace(vin="VIN1", seat_heating=dict(zones))
 
 
 def test_requested_and_supported_zone_is_returned():

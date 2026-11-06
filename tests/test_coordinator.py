@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from datetime import timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
@@ -169,15 +170,16 @@ async def test_coordinator_captcha_required_triggers_reauth(
             await coordinator._async_update_data()
 
 
-async def test_picture_locations_retried_when_empty(
+async def test_picture_locations_retried_daily_when_empty(
     hass: HomeAssistant,
     mock_config_entry: MockConfigEntry,
     mock_vehicle,
+    freezer,
 ) -> None:
-    """A periodic refresh retries get_picture_locations while it stays empty.
+    """Empty picture locations are fetched again once a day, not every refresh.
 
     Guards against losing the image entities when the one-shot fetch at setup
-    fails: picture_locations never populates here, so each refresh retries.
+    fails, without an extra call to a rate-limited API on every refresh.
     """
     mock_config_entry.add_to_hass(hass)
 
@@ -198,5 +200,8 @@ async def test_picture_locations_retried_when_empty(
         coordinator = mock_config_entry.runtime_data
         mock_vehicle.get_picture_locations.reset_mock()
         await coordinator._async_update_data()
+        mock_vehicle.get_picture_locations.assert_not_awaited()
 
-        mock_vehicle.get_picture_locations.assert_awaited()
+        freezer.tick(timedelta(days=1))
+        await coordinator._async_update_data()
+        mock_vehicle.get_picture_locations.assert_awaited_once()

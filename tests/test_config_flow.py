@@ -11,6 +11,7 @@ from homeassistant.core import HomeAssistant
 from homeassistant.data_entry_flow import FlowResultType
 from pyporscheconnectapi.exceptions import (
     PorscheCaptchaRequiredError,
+    PorscheExceptionError,
     PorscheWrongCredentialsError,
 )
 from pytest_homeassistant.common import MockConfigEntry
@@ -86,6 +87,28 @@ async def test_user_step_wrong_credentials(hass: HomeAssistant) -> None:
     assert result["type"] == FlowResultType.FORM
     assert result["step_id"] == "user"
     assert result["errors"] == {"base": "invalid_auth"}
+
+
+async def test_user_step_cannot_connect(hass: HomeAssistant) -> None:
+    """An API error that is not about the credentials → `cannot_connect`."""
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_USER},
+    )
+
+    instance = MagicMock()
+    instance.get_token = AsyncMock(side_effect=PorscheExceptionError(503))
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=instance,
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": "cannot_connect"}
 
 
 async def test_user_step_already_configured(hass: HomeAssistant) -> None:
@@ -221,12 +244,14 @@ async def test_captcha_step_resumes_with_code_verifier(hass: HomeAssistant) -> N
     with patch(
         "custom_components.porscheconnect.config_flow.Connection",
         return_value=challenged,
-    ):
+    ) as first_cls:
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"],
             user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
         )
     assert result["step_id"] == "captcha"
+    client = first_cls.call_args.kwargs["async_client"]
+    assert client.headers["Accept-Encoding"] == "gzip, deflate"
 
     with patch(
         "custom_components.porscheconnect.config_flow.Connection",
@@ -239,6 +264,8 @@ async def test_captcha_step_resumes_with_code_verifier(hass: HomeAssistant) -> N
         await hass.async_block_till_done()
 
     kwargs = connection_cls.call_args.kwargs
+    # Same client as the first step: keeps the Auth0 transaction cookies.
+    assert kwargs["async_client"] is client
     assert kwargs[CONF_CAPTCHA_CODE] == "SOLVED"
     assert kwargs[CONF_OAUTH_STATE] == "state-token-xyz"
     assert kwargs[CONF_CODE_VERIFIER] == "verifier-abc"

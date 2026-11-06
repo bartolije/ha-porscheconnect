@@ -13,11 +13,6 @@ TRANSIENT_AUTH_FIELDS = frozenset(
     {CONF_CAPTCHA_CODE, CONF_CODE_VERIFIER, CONF_OAUTH_STATE},
 )
 
-NAME = "porscheconnect"
-DOMAIN_DATA = f"{DOMAIN}_data"
-VERSION = "0.4.1"
-ISSUE_URL = "https://github.com/cjne/ha-porscheconnect/issues"
-
 PLATFORMS = [
     "sensor",
     "binary_sensor",
@@ -29,13 +24,3 @@ PLATFORMS = [
     "image",
     "climate",
 ]
-
-STARTUP_MESSAGE = f"""
--------------------------------------------------------------------
-{NAME}
-Version: {VERSION}
-This is a custom integration!
-If you have any issues with this you need to open an issue here:
-{ISSUE_URL}
--------------------------------------------------------------------
-"""

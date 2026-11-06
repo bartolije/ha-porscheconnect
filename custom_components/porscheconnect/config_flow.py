@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import base64
 import logging
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 import voluptuous as vol
 from homeassistant import exceptions
@@ -24,6 +24,7 @@ from pyporscheconnectapi.exceptions import (
     PorscheWrongCredentialsError,
 )
 
+from . import async_create_porsche_client
 from .const import (
     CONF_CAPTCHA_CODE,
     CONF_CODE_VERIFIER,
@@ -32,13 +33,18 @@ from .const import (
     TRANSIENT_AUTH_FIELDS,
 )
 
+if TYPE_CHECKING:
+    import httpx2
+
 _LOGGER = logging.getLogger(__name__)
 
 STEP_USER_DATA_SCHEMA = vol.Schema({CONF_EMAIL: str, CONF_PASSWORD: str})
 CHANGE_PASSWORD_SCHEMA = vol.Schema({CONF_PASSWORD: str})
 
 
-async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
+async def validate_input(
+    client: httpx2.AsyncClient, data: dict[str, Any]
+) -> dict[str, Any]:
     """Validate the user input allows us to connect.
 
     Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
@@ -54,6 +60,7 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
             # come back with the captcha code, or the resume is rejected.
             code_verifier=data.get(CONF_CODE_VERIFIER),
             token=token,
+            async_client=client,
         )
     except PorscheExceptionError as exc:
         _LOGGER.debug("Could not create connection: %s", exc)
@@ -63,7 +70,7 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
     try:
         token = await conn.get_token()
     except PorscheCaptchaRequiredError as exc:
-        _LOGGER.info("Captcha required to log in: %s", exc.captcha)
+        _LOGGER.info("Captcha required to log in")
         return {
             "email": data[CONF_EMAIL],
             "password": data[CONF_PASSWORD],
@@ -75,11 +82,11 @@ async def validate_input(data: dict[str, Any]) -> dict[str, Any]:
         _LOGGER.info("Wrong credentials.")
         raise InvalidAuth from exc
     except PorscheExceptionError as exc:
-        _LOGGER.info("Authentication flow error: %s", exc.message)
-        raise InvalidAuth from exc
+        _LOGGER.info("Could not log in to Porsche Connect: %s", exc.message)
+        raise CannotConnect from exc
     except Exception as exc:
-        _LOGGER.info("Login failed: %s", exc)
-        raise InvalidAuth from exc
+        _LOGGER.exception("Unexpected error during login")
+        raise CannotConnect from exc
 
     return {"title": data[CONF_EMAIL], CONF_ACCESS_TOKEN: token}
 
@@ -94,6 +101,14 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
     captcha = None
     state = None
     code_verifier = None
+    _client: httpx2.AsyncClient | None = None
+
+    @callback
+    def _get_http_client(self) -> httpx2.AsyncClient:
+        """Return the flow's HTTP client, shared by the login and captcha steps."""
+        if self._client is None:
+            self._client = async_create_porsche_client(self.hass)
+        return self._client
 
     @callback
     def _get_entry_for_current_flow(self) -> ConfigEntry | None:
@@ -169,7 +184,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             self._abort_if_unique_id_configured()
 
         try:
-            info = await validate_input(user_input)
+            info = await validate_input(self._get_http_client(), user_input)
             if info.get("captcha") and info.get(CONF_OAUTH_STATE):
                 self.email = info.get("email")
                 self.password = info.get("password")
@@ -206,6 +221,8 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
 
         except InvalidAuth:
             errors["base"] = "invalid_auth"
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
 
         return self.async_show_form(
             step_id="user",
@@ -217,9 +234,6 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
         """Handle configuration by re-auth."""
-        self._reauth_entry = self.hass.config_entries.async_get_entry(
-            self.context["entry_id"],
-        )
         await self.async_set_unique_id(
             self._get_expected_unique_id(),
             raise_on_progress=False,
@@ -272,7 +286,7 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
             }
             errors = {}
             try:
-                info = await validate_input(user_input)
+                info = await validate_input(self._get_http_client(), user_input)
 
                 # Handle case where another captcha is required
                 if info.get("captcha") and info.get(CONF_OAUTH_STATE):
@@ -308,8 +322,10 @@ class ConfigFlow(ConfigFlow, domain=DOMAIN):
                     data=entry_data,
                 )
 
-            except InvalidAuth:
-                errors["base"] = "invalid_auth"
+            except (InvalidAuth, CannotConnect) as err:
+                errors["base"] = (
+                    "invalid_auth" if isinstance(err, InvalidAuth) else "cannot_connect"
+                )
                 return self.async_show_form(
                     step_id="captcha",
                     data_schema=vol.Schema(
@@ -362,5 +378,5 @@ class InvalidAuth(exceptions.HomeAssistantError):
     """Error to indicate there is invalid auth."""
 
 
-class CaptchaRequired(exceptions.HomeAssistantError):
-    """Error to indicate captcha verification is required."""
+class CannotConnect(exceptions.HomeAssistantError):
+    """Error to indicate the Porsche login could not be completed."""

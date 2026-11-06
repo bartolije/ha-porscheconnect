@@ -37,6 +37,8 @@ SWITCH_TYPES: list[PorscheSwitchEntityDescription] = [
     PorscheSwitchEntityDescription(
         key="climatise",
         translation_key="climatise",
+        # Same command as the climate entity, which also sets the temperature.
+        entity_registry_enabled_default=False,
         is_available=lambda v: v.has_remote_climatisation and v.has_remote_services,
         value_fn=lambda v: v.remote_climatise_on,
         remote_service_on=lambda v: v.remote_services.climatise_on(),

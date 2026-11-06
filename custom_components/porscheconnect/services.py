@@ -26,7 +26,7 @@ ATTR_REAR_LEFT = "rear_left"
 ATTR_REAR_RIGHT = "rear_right"
 
 # Mapping from service-call attribute (snake_case) to API zone key (camelCase),
-# as exposed in `CLIMATIZER_STATE.climateZonesEnabled`. The set of keys actually
+# as exposed in `HVAC_SUMMARY.climateZonesEnabled`. The set of keys actually
 # present in that payload is per-vehicle: zones the car does not physically have
 # are simply missing from the payload (not set to false). See issue #292.
 _ZONE_ATTR_TO_API_KEY: dict[str, str] = {
@@ -47,11 +47,7 @@ def _resolve_climate_zone_kwargs(
     `ServiceValidationError` if the caller requested a zone the vehicle does
     not physically have (issue #292).
     """
-    supported_zones: set[str] = set(
-        vehicle.data.get("CLIMATIZER_STATE", {})
-        .get("climateZonesEnabled", {})
-        .keys()
-    )
+    supported_zones: set[str] = set(vehicle.seat_heating or {})
 
     zone_kwargs: dict[str, bool] = {}
     for attr_name, api_key in _ZONE_ATTR_TO_API_KEY.items():
@@ -95,8 +91,6 @@ SERVICE_CLIMATISATION_START_SCHEMA = SERVICE_VEHICLE_SCHEMA.extend(
 
 SERVICE_CLIMATISATION_START = "climatisation_start"
 SERVICE_CLIMATISATION_STOP = "climatisation_stop"
-
-SERVICES = (SERVICE_CLIMATISATION_START, SERVICE_CLIMATISATION_STOP)
 
 
 def _resolve_vehicle(
@@ -160,7 +154,7 @@ def async_setup_services(hass: HomeAssistant) -> None:
             )
 
         # The Porsche API only includes zones the car physically supports
-        # in `CLIMATIZER_STATE.climateZonesEnabled`. A missing key means
+        # in `HVAC_SUMMARY.climateZonesEnabled`. A missing key means
         # "not available", not "false" — so derive the supported set from
         # the actual payload instead of hardcoding all four zones (#292).
         zone_kwargs = _resolve_climate_zone_kwargs(vehicle, service_call.data)
@@ -234,11 +228,3 @@ def async_setup_services(hass: HomeAssistant) -> None:
             climatisation_stop,
             schema=SERVICE_VEHICLE_SCHEMA,
         )
-
-
-@callback
-def async_unload_services(hass: HomeAssistant) -> None:
-    """Remove Porsche Connect services on last entry unload."""
-    for service in SERVICES:
-        if hass.services.has_service(DOMAIN, service):
-            hass.services.async_remove(DOMAIN, service)

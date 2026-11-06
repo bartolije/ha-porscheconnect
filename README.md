@@ -30,7 +30,9 @@ Connect subscription and are paired to a My Porsche account.
 - Vehicle location via `device_tracker` (suppressed when privacy mode is on)
 - Vehicle images (front, side, rear, rear-top, top views)
 - Door `lock` entity (unlock requires the S-PIN configured per-entity)
-- Remote `switch` entities: climatisation, direct charging
+- `climate` entity: remote climatisation with a target temperature
+- Remote `switch` entities: direct charging, and climatisation (disabled by default:
+  the `climate` entity sends the same command)
 - `number` entity: target state of charge
 - `button` entities: flash indicators, honk-and-flash, refresh overview
 - `climatisation_start` service action with seat-heating zone selection
@@ -86,7 +88,8 @@ integration only creates entities that the car can actually drive.
 | `device_tracker`| Vehicle location                                                   | `has_porsche_connect` and `privacy_mode == false`        |
 | `image`         | `front_view`, `side_view`, `rear_view`, `rear_top_view`, `top_view`| Pictures returned by the API                             |
 | `lock`          | Door lock                                                          | `has_porsche_connect` (unlock needs S-PIN)               |
-| `switch`        | `climatise`                                                        | `has_remote_climatisation` and `has_remote_services`     |
+| `climate`       | Remote climatisation (target temperature)                          | `has_remote_climatisation` and `has_remote_services`     |
+| `switch`        | `climatise` (disabled by default)                                  | `has_remote_climatisation` and `has_remote_services`     |
 | `switch`        | `direct_charging`                                                  | `has_direct_charge` and `has_remote_services`            |
 | `number`        | `target_soc` (25–100 %, step 5)                                    | `has_electric_drivetrain` and `has_remote_services`      |
 | `button`        | `flash_indicators`                                                 | `has_remote_services`                                    |
@@ -94,7 +97,8 @@ integration only creates entities that the car can actually drive.
 | `button`        | `get_current_overview`                                             | `has_remote_services` (forces a fresh pull from the car) |
 
 The privacy mode flag is honoured by the vehicle itself — when the driver
-enables privacy in the PCM, the `device_tracker` entity is not created.
+enables privacy in the PCM, the `device_tracker` entity is not created; it is
+added on the next refresh once privacy mode is turned off.
 
 ## Installation
 
@@ -218,7 +222,7 @@ entities:
   - entity: binary_sensor.taycan_doors_and_lids
   - entity: binary_sensor.taycan_tire_pressure_status
   - entity: lock.taycan_door_lock
-  - entity: switch.taycan_remote_climatisation
+  - entity: climate.taycan
   - entity: number.taycan_target_state_of_charge
   - entity: button.taycan_flash_indicators
 ```

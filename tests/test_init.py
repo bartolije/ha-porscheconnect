@@ -205,3 +205,21 @@ async def test_migrate_entry_drops_transient_auth_fields(
     assert entry.version == 2
     assert TRANSIENT_AUTH_FIELDS.isdisjoint(entry.data)
     assert entry.data[CONF_ACCESS_TOKEN] == {"access_token": "abc123", "expires_in": 3600}
+
+
+async def test_services_survive_entry_reload(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """A reload (e.g. after reauth) keeps the domain services registered."""
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert await hass.config_entries.async_reload(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert hass.services.has_service(DOMAIN, "climatisation_start")
+    assert hass.services.has_service(DOMAIN, "climatisation_stop")

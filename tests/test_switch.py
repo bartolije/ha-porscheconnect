@@ -111,3 +111,9 @@ async def test_climatise_turn_on_off_invoke_remote_service():
     vehicle.remote_services.climatise_off.assert_awaited_once()
 
     assert coord.async_update_listeners.call_count == 2
+
+
+def test_climatise_switch_disabled_by_default():
+    """The climate entity covers climatisation; the switch is opt-in."""
+    assert _desc("climatise").entity_registry_enabled_default is False
+    assert _desc("direct_charging").entity_registry_enabled_default is True
