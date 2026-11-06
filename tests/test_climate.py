@@ -31,6 +31,8 @@ def _vehicle(**overrides) -> SimpleNamespace:
         "has_remote_climatisation": True,
         "has_remote_services": True,
         "remote_climatise_on": False,
+        "climatisation_target_temperature": None,
+        "climatisation_remaining_time": None,
     }
     attrs.update(overrides)
     return SimpleNamespace(**attrs)
@@ -126,3 +128,29 @@ async def test_api_error_maps_to_home_assistant_error():
 
     with pytest.raises(HomeAssistantError):
         await climate.async_turn_on()
+
+
+def test_target_starts_from_the_car():
+    """The reported target is the starting point, 20 °C when none is reported."""
+    coord = MagicMock()
+    assert _make(coord, _vehicle(climatisation_target_temperature=22.5)).native_target_temperature == 22.5
+    assert _make(coord, _vehicle()).native_target_temperature == 20.0
+
+
+def test_target_follows_the_car_only_while_running():
+    """A target chosen while off is kept; the car's target is followed while on."""
+    vehicle = _vehicle(climatisation_target_temperature=19.0)
+    climate = _make(MagicMock(), vehicle)
+    climate.async_write_ha_state = MagicMock()
+
+    climate._attr_native_target_temperature = 23.0
+    climate._handle_coordinator_update()
+    assert climate.native_target_temperature == 23.0
+
+    vehicle.remote_climatise_on = True
+    vehicle.climatisation_target_temperature = 21.5
+    vehicle.climatisation_remaining_time = 14
+    climate._handle_coordinator_update()
+    assert climate.native_target_temperature == 21.5
+    assert climate.extra_state_attributes == {"remaining_time": 14}
+

@@ -150,6 +150,9 @@
       "state_of_charge": {
         "name": "Laadtoestand"
       },
+      "last_update": {
+        "name": "Laatste update van de auto"
+      },
       "mileage": {
         "name": "Kilometerstand"
       },

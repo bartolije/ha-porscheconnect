@@ -150,6 +150,9 @@
       "state_of_charge": {
         "name": "Laddningsnivå"
       },
+      "last_update": {
+        "name": "Senaste uppdatering från bilen"
+      },
       "mileage": {
         "name": "Mätarställning"
       },

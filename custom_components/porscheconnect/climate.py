@@ -85,9 +85,25 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
         """Initialise the climate entity."""
         super().__init__(coordinator, vehicle)
         self._attr_unique_id = f"{self._vin}-climate"
-        # The API reports on/off but not the previously-requested target, so we
-        # keep an optimistic target the user can adjust.
-        self._attr_native_target_temperature = _DEFAULT_TEMP_C
+        # Start from the target the car reports; the user's later choice is kept
+        # until climatisation runs, then the car's target is followed again.
+        reported = vehicle.climatisation_target_temperature
+        self._attr_native_target_temperature = (
+            reported if reported is not None else _DEFAULT_TEMP_C
+        )
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Follow the target the car applies while climatisation runs."""
+        reported = self.vehicle.climatisation_target_temperature
+        if self.vehicle.remote_climatise_on and reported is not None:
+            self._attr_native_target_temperature = reported
+        super()._handle_coordinator_update()
+
+    @property
+    def extra_state_attributes(self) -> dict[str, Any]:
+        """Return the remaining climatisation time, in minutes, while it runs."""
+        return {"remaining_time": self.vehicle.climatisation_remaining_time}
 
     @property
     def hvac_mode(self) -> HVACMode:
