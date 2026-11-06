@@ -6,14 +6,14 @@ import asyncio
 import copy
 import logging
 import operator
-from datetime import timedelta
+from datetime import datetime, timedelta
 from functools import reduce
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryNotReady
+from homeassistant.exceptions import ConfigEntryAuthFailed
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
@@ -25,6 +25,7 @@ from homeassistant.helpers.update_coordinator import (
     DataUpdateCoordinator,
     UpdateFailed,
 )
+from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.account import PorscheConnectAccount
 from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
@@ -36,13 +37,19 @@ from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from .const import DEFAULT_SCAN_INTERVAL, DOMAIN, PLATFORMS, TRANSIENT_AUTH_FIELDS
 
+if TYPE_CHECKING:
+    import httpx2
+
 _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 HTTP_UNAUTHORIZED = 401
 
 _AUTH_FAILED_MSG = "Authentication failed for Porsche Connect"
-_API_ERROR_MSG = "Error communicating with Porsche Connect API"
+
+# Picture locations are cosmetic: when the API has none for a car, ask again
+# once a day rather than on every refresh of a rate-limited API.
+_PICTURE_RETRY_INTERVAL = timedelta(days=1)
 
 # Type alias for the runtime data attached to each config entry.
 PorscheConnectConfigEntry = ConfigEntry["PorscheConnectDataUpdateCoordinator"]
@@ -87,6 +94,19 @@ def _async_save_token(
             CONF_ACCESS_TOKEN: access_token,
         },
     )
+
+
+@callback
+def async_create_porsche_client(hass: HomeAssistant) -> httpx2.AsyncClient:
+    """Return an HTTP client for the Porsche API.
+
+    The Porsche API returns zstd bodies that httpx2 (HA 2026.11+) cannot
+    decode, so the client must not advertise zstd. The header is set on the
+    client because create_async_httpx_client only merges headers= since 2026.2.
+    """
+    client = create_async_httpx_client(hass)
+    client.headers["Accept-Encoding"] = "gzip, deflate"
+    return client
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
@@ -157,15 +177,10 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> bool:
     """Set up this integration using UI."""
-    # The Porsche API returns zstd bodies that httpx2 (HA 2026.11+) cannot decode,
-    # so use a dedicated client that does not advertise zstd. The header is set on
-    # the client because create_async_httpx_client only merges headers= since 2026.2.
-    async_client = create_async_httpx_client(hass)
-    async_client.headers["Accept-Encoding"] = "gzip, deflate"
     connection = Connection(
         entry.data.get("email"),
         entry.data.get("password"),
-        async_client=async_client,
+        async_client=async_create_porsche_client(hass),
         token=entry.data.get(CONF_ACCESS_TOKEN, None),
     )
 
@@ -179,21 +194,9 @@ async def async_setup_entry(
         controller=controller,
     )
 
-    try:
-        await coordinator.async_config_entry_first_refresh()
-    except ConfigEntryAuthFailed:
-        # The coordinator already wrapped the auth error appropriately; let HA
-        # surface the reauth flow.
-        raise
-    except PorscheWrongCredentialsError as exc:
-        msg = f"{_AUTH_FAILED_MSG}: {exc}"
-        raise ConfigEntryAuthFailed(msg) from exc
-    except PorscheExceptionError as exc:
-        if _is_auth_error(exc):
-            msg = f"{_AUTH_FAILED_MSG}: {exc}"
-            raise ConfigEntryAuthFailed(msg) from exc
-        msg = f"{_API_ERROR_MSG}: {exc}"
-        raise ConfigEntryNotReady(msg) from exc
+    # The coordinator turns API errors into ConfigEntryAuthFailed (reauth) or
+    # UpdateFailed, which the first refresh raises as ConfigEntryNotReady.
+    await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
 
@@ -213,11 +216,6 @@ async def async_setup_entry(
     # rotated tokens.
     _async_save_token(hass, entry, copy.deepcopy(controller.token))
 
-    # Track that this entry is using our domain-global services so that the
-    # last unload can release them. We keep this in hass.data only as a small
-    # bookkeeping set; entity state lives on entry.runtime_data.
-    hass.data.setdefault(DOMAIN, set()).add(entry.entry_id)
-
     return True
 
 
@@ -234,6 +232,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self.controller = controller
         self.vehicles: list[PorscheVehicle] = []
         self.hass = hass
+        self._picture_attempts: dict[str, datetime] = {}
 
         scan_interval = timedelta(
             seconds=config_entry.options.get(
@@ -259,18 +258,22 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         """Get data value leaf from dict."""
         return get_from_dict(get_from_dict(vehicle.data, node), leaf)
 
-    # Backwards-compat alias (historic typo kept so external references don't
-    # break mid-upgrade). New code should use get_vehicle_data_leaf.
-    get_vechicle_data_leaf = get_vehicle_data_leaf
-
     async def _async_fetch_pictures(self, vehicle: PorscheVehicle) -> None:
         """Fetch picture locations best-effort — cosmetic, must not fail a cycle."""
+        self._picture_attempts[vehicle.vin] = dt_util.utcnow()
         try:
             await vehicle.get_picture_locations()
         except PorscheExceptionError as exc:
             _LOGGER.debug(
                 "Could not fetch picture locations for %s: %s", vehicle.vin, exc,
             )
+
+    def _picture_retry_due(self, vehicle: PorscheVehicle) -> bool:
+        """Return True if empty picture locations should be fetched again."""
+        if vehicle.picture_locations:
+            return False
+        last = self._picture_attempts.get(vehicle.vin)
+        return last is None or dt_util.utcnow() - last >= _PICTURE_RETRY_INTERVAL
 
     async def _async_update_data(self) -> dict:
         """Fetch data from API endpoint."""
@@ -290,7 +293,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                         # Retry pictures if the initial fetch came back empty
                         # (e.g. a transient failure at setup); the image platform
                         # adds the entities once they appear.
-                        if not vehicle.picture_locations:
+                        if self._picture_retry_due(vehicle):
                             await self._async_fetch_pictures(vehicle)
 
         except PorscheWrongCredentialsError as exc:
@@ -320,32 +323,15 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
 async def async_unload_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> bool:
-    """Unload a config entry."""
-    unload_ok = await hass.config_entries.async_unload_platforms(
+    """Unload a config entry.
+
+    The domain-wide services stay registered: they are set up once in
+    async_setup, and a reload (e.g. after reauth) does not register them again.
+    """
+    return await hass.config_entries.async_unload_platforms(
         entry,
         list(PLATFORMS),
     )
-
-    if unload_ok:
-        tracked: set[str] = hass.data.get(DOMAIN, set())
-        tracked.discard(entry.entry_id)
-
-        # If this was the last entry, release the domain-global services so
-        # subsequent reloads don't accumulate stale registrations.
-        if not tracked:
-            from .services import async_unload_services
-
-            async_unload_services(hass)
-            hass.data.pop(DOMAIN, None)
-
-    return unload_ok
-
-
-async def async_reload_entry(
-    hass: HomeAssistant, entry: PorscheConnectConfigEntry
-) -> None:
-    """Reload config entry."""
-    await hass.config_entries.async_reload(entry.entry_id)
 
 
 async def async_remove_config_entry_device(

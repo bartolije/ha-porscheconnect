@@ -38,12 +38,14 @@ async def async_setup_entry(
         for vehicle in coordinator.vehicles:
             if vehicle.vin in known_vins:
                 continue
-            known_vins.add(vehicle.vin)
+            # Not marked as known while in privacy mode, so the tracker is
+            # added on a later refresh once privacy mode is turned off.
             if vehicle.privacy_mode:
-                _LOGGER.info(
+                _LOGGER.debug(
                     "Vehicle is in privacy mode with location tracking disabled"
                 )
                 continue
+            known_vins.add(vehicle.vin)
             new_entities.append(PorscheDeviceTracker(coordinator, vehicle))
         if new_entities:
             async_add_entities(new_entities)

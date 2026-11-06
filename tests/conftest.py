@@ -48,6 +48,9 @@ def _make_vehicle() -> SimpleNamespace:
     vehicle.has_porsche_connect = True
     vehicle.privacy_mode = False
     vehicle.picture_locations = {}
+    vehicle.seat_heating = None
+    vehicle.location = (None, None, None)
+    vehicle.location_updated_at = None
     vehicle.data = {
         "name": "Taycan",
         "modelName": "Taycan Turbo S",

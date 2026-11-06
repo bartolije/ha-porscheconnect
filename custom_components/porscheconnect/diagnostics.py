@@ -39,6 +39,15 @@ TO_REDACT_VEHICLE_DATA: set[str] = {
     "city",
     "postalCode",
     "zip",
+    # GPS_LOCATION.location is a "lat,lon" string, not separate coordinates.
+    "location",
+    # Whole measurements that hold key-pairing secrets or places.
+    "PAIRING_CODE",
+    "MDK_PAIRING_PASSWORD",
+    "BLEID_DDADATA",
+    "DESTINATIONS",
+    "LOCATION_ALARMS",
+    "VTS_CERTIFICATE_LIST",
 }
 
 # Local-part of an email is masked once it gets longer than this threshold.

@@ -39,16 +39,6 @@ def _make(coordinator, vehicle) -> PorscheLock:
     return PorscheLock(coordinator, vehicle)
 
 
-def test_door_lock_state_available_gating():
-    """door_lock_state_available mirrors the vehicle's remote-service flag."""
-    coord = MagicMock()
-    assert _make(coord, _vehicle()).door_lock_state_available is True
-    assert (
-        _make(coord, _vehicle(has_remote_services=False)).door_lock_state_available
-        is False
-    )
-
-
 @pytest.mark.asyncio
 async def test_lock_invokes_remote_service_and_refreshes():
     coord = MagicMock()
