@@ -150,6 +150,9 @@
       "state_of_charge": {
         "name": "Niveau de charge"
       },
+      "last_update": {
+        "name": "Dernière remontée de la voiture"
+      },
       "mileage": {
         "name": "Kilométrage"
       },

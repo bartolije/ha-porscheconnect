@@ -49,6 +49,9 @@ def _make_vehicle() -> SimpleNamespace:
     vehicle.privacy_mode = False
     vehicle.picture_locations = {}
     vehicle.seat_heating = None
+    vehicle.climatisation_target_temperature = None
+    vehicle.climatisation_remaining_time = None
+    vehicle.last_global_update = None
     vehicle.location = (None, None, None)
     vehicle.location_updated_at = None
     vehicle.data = {

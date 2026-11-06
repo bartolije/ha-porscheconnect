@@ -150,6 +150,9 @@
       "state_of_charge": {
         "name": "State of charge"
       },
+      "last_update": {
+        "name": "Last update from the car"
+      },
       "mileage": {
         "name": "Mileage"
       },

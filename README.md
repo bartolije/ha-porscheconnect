@@ -101,6 +101,7 @@ integration only creates entities that the car can actually drive.
 | `sensor`        | `charging_power`                                                   | `has_electric_drivetrain`                                |
 | `sensor`        | `charging_finished`                                                | `has_electric_drivetrain`                                |
 | `sensor`        | `remaining_range_electric`                                         | `has_electric_drivetrain`                                |
+| `sensor`        | `last_update` (when the car last sent its data, diagnostic)        | `GLOBAL_TIMESTAMP` reported                              |
 | `sensor`        | `mileage`                                                          | `has_porsche_connect` (default)                          |
 | `sensor`        | `remaining_range`                                                  | `has_ice_drivetrain`                                     |
 | `sensor`        | `fuel_level`                                                       | `has_ice_drivetrain`                                     |
@@ -113,7 +114,7 @@ integration only creates entities that the car can actually drive.
 | `device_tracker`| Vehicle location                                                   | `has_porsche_connect` and `privacy_mode == false`        |
 | `image`         | `front_view`, `side_view`, `rear_view`, `rear_top_view`, `top_view`| Pictures returned by the API                             |
 | `lock`          | Door lock                                                          | `has_porsche_connect` (unlock needs S-PIN)               |
-| `climate`       | Remote climatisation (target temperature)                          | `has_remote_climatisation` and `has_remote_services`     |
+| `climate`       | Remote climatisation (target read from the car, `remaining_time`)  | `has_remote_climatisation` and `has_remote_services`     |
 | `switch`        | `climatise` (disabled by default)                                  | `has_remote_climatisation` and `has_remote_services`     |
 | `switch`        | `direct_charging`                                                  | `has_direct_charge` and `has_remote_services`            |
 | `number`        | `target_soc` (25–100 %, step 5)                                    | `has_electric_drivetrain` and `has_remote_services`      |

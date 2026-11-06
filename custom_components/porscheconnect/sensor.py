@@ -151,6 +151,15 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         is_available=lambda v: v.has_electric_drivetrain,
     ),
     PorscheSensorEntityDescription(
+        # When the car last sent its data: the other values are that old.
+        key="last_update",
+        translation_key="last_update",
+        value_fn=lambda v: v.last_global_update,
+        device_class=SensorDeviceClass.TIMESTAMP,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        is_available=lambda v: "GLOBAL_TIMESTAMP" in v.data,
+    ),
+    PorscheSensorEntityDescription(
         key="mileage",
         translation_key="mileage",
         measurement_node="MILEAGE",
