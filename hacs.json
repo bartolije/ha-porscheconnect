@@ -1,4 +1,6 @@
 {
     "name": "My Porsche Connect",
+    "zip_release": true,
+    "filename": "porscheconnect.zip",
     "homeassistant": "2026.11.0"
 }

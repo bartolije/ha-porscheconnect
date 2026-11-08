@@ -1,0 +1,34 @@
+name: Release zip
+
+# HACS installs from this zip (hacs.json: zip_release), so its download count
+# on each release is the number of HACS installs and updates of that version.
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Release tag to (re)attach the zip to
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  zip:
+    runs-on: ubuntu-latest
+    env:
+      TAG: ${{ github.event.release.tag_name || inputs.tag }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.TAG }}
+
+      - name: Build porscheconnect.zip and attach it to the release
+        working-directory: custom_components/porscheconnect
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          zip -r "$RUNNER_TEMP/porscheconnect.zip" . -x '*__pycache__*'
+          unzip -l "$RUNNER_TEMP/porscheconnect.zip" | grep -q ' manifest.json$'
+          gh release upload "$TAG" "$RUNNER_TEMP/porscheconnect.zip" --clobber
