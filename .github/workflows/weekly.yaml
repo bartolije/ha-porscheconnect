@@ -3,9 +3,12 @@ name: Weekly
 # Early warning between releases: the regular CI pins Home Assistant, this run
 # takes the newest one, it checks that Porsche still accepts the library, and it
 # reports new releases of the upstream projects.
+# The Porsche check also runs on the other days: a refused login breaks every
+# new setup, so a week is too long to find out.
 on:
   schedule:
     - cron: "0 5 * * 1"
+    - cron: "30 5 * * 0,2-6"
   workflow_dispatch:
 
 permissions:
@@ -15,6 +18,7 @@ permissions:
 jobs:
   latest-home-assistant:
     name: Tests on the latest Home Assistant
+    if: github.event.schedule != '30 5 * * 0,2-6'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -81,6 +85,7 @@ jobs:
 
   upstream-releases:
     name: Upstream releases
+    if: github.event.schedule != '30 5 * * 0,2-6'
     runs-on: ubuntu-latest
     steps:
       - name: Open an issue for each new upstream release
