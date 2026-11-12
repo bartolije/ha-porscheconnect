@@ -60,7 +60,8 @@ async def validate_input(
             # come back with the captcha code, or the resume is rejected.
             code_verifier=data.get(CONF_CODE_VERIFIER),
             token=token,
-            async_client=client,
+            # httpx2 is Home Assistant's httpx; the library is annotated for httpx.
+            async_client=client,  # type: ignore[arg-type]
         )
     except PorscheExceptionError as exc:
         _LOGGER.debug("Could not create connection: %s", exc)

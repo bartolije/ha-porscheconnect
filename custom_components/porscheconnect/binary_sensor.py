@@ -36,7 +36,7 @@ class PorscheBinarySensorEntityDescription(BinarySensorEntityDescription):
     measurement_node: str | None = None
     measurement_leaf: str | None = None
     value_fn: Callable[[PorscheVehicle], bool] | None = None
-    attr_fn: Callable[[PorscheVehicle], dict[str, Any]] | None = None
+    attr_fn: Callable[[PorscheVehicle], dict[str, Any] | None] | None = None
     is_available: Callable[[PorscheVehicle], bool] = lambda v: v.has_porsche_connect
 
 
@@ -282,8 +282,8 @@ class PorscheBinarySensor(PorscheBaseEntity, BinarySensorEntity):
         )
 
         if self.entity_description.attr_fn:
-            self._attr_extra_state_attributes = self.entity_description.attr_fn(
-                self.vehicle,
+            self._attr_extra_state_attributes = (
+                self.entity_description.attr_fn(self.vehicle) or {}
             )
 
         super()._handle_coordinator_update()

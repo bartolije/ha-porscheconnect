@@ -110,7 +110,7 @@ pinned to an exact version in `manifest.json` and `requirements_test.txt`.
 When a change needs a new library version, release in this order:
 
 1. **Library first.** Merge the change in the library repository, bump the version
-   in its `setup.py` and publish a GitHub release: the release workflow uploads it
+   in its `pyproject.toml` and publish a GitHub release: the release workflow uploads it
    to PyPI.
 2. **Then the integration.** Open the pull request that raises the pinned version.
    Its CI installs the library from PyPI, so the tests and mypy jobs fail with

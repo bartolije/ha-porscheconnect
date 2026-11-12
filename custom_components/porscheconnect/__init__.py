@@ -103,7 +103,7 @@ def has_measurement(key: str) -> Callable[[PorscheVehicle], bool]:
 def _async_save_token(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    access_token: dict[str, Any],
+    access_token: dict[str, Any] | None,
 ) -> None:
     hass.config_entries.async_update_entry(
         config_entry,
@@ -226,7 +226,8 @@ async def async_setup_entry(
     connection = Connection(
         entry.data.get("email"),
         entry.data.get("password"),
-        async_client=_async_get_entry_client(hass, entry.entry_id),
+        # httpx2 is Home Assistant's httpx; the library is annotated for httpx.
+        async_client=_async_get_entry_client(hass, entry.entry_id),  # type: ignore[arg-type]
         token=entry.data.get(CONF_ACCESS_TOKEN, None),
     )
 

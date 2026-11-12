@@ -121,11 +121,14 @@ def _resolve_vehicle(
         if identifier[0] == DOMAIN
     }
 
-    coordinator = getattr(config_entry, "runtime_data", None)
-    if coordinator is not None:
-        for vehicle in coordinator.vehicles:
-            if vehicle.vin in porsche_vins:
-                return vehicle
+    vehicles: list[PorscheVehicle] = (
+        config_entry.runtime_data.vehicles
+        if config_entry is not None and hasattr(config_entry, "runtime_data")
+        else []
+    )
+    for vehicle in vehicles:
+        if vehicle.vin in porsche_vins:
+            return vehicle
 
     raise ServiceValidationError(
         translation_domain=DOMAIN,

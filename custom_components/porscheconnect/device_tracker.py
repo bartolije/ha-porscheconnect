@@ -79,7 +79,7 @@ class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return entity specific state attributes."""
-        data = {"updated_at": self.vehicle.location_updated_at}
+        data: dict[str, Any] = {"updated_at": self.vehicle.location_updated_at}
         if self.vehicle.location[2] is not None:
             data["direction"] = float(self.vehicle.location[2])
         return data

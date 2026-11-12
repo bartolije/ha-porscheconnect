@@ -1,4 +1,4 @@
-pyporscheconnectapi-bartolije==0.6.2
+pyporscheconnectapi-bartolije==1.0.0
 pytest-homeassistant==2026.11.0
 pytest-timeout==2.4.0
 pytest-cov==7.1.0
