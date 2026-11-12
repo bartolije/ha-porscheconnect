@@ -61,6 +61,9 @@ _UPSTREAM_KEY_RENAMES = {
 # once a day rather than on every refresh of a rate-limited API.
 _PICTURE_RETRY_INTERVAL = timedelta(days=1)
 
+# One refresh: the vehicle list, then one overview per car (seconds).
+_UPDATE_TIMEOUT = 60
+
 # Type alias for the runtime data attached to each config entry.
 PorscheConnectConfigEntry = ConfigEntry["PorscheConnectDataUpdateCoordinator"]
 
@@ -276,6 +279,9 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         """Initialise the controller."""
         self.controller = controller
         self.vehicles: list[PorscheVehicle] = []
+        # Every car seen since setup: entities keep their vehicle object, so a
+        # car that comes back to the account must get the same one.
+        self._seen_vehicles: dict[str, PorscheVehicle] = {}
         self.hass = hass
         self._picture_attempts: dict[str, datetime] = {}
 
@@ -322,26 +328,27 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         last = self._picture_attempts.get(vehicle.vin)
         return last is None or dt_util.utcnow() - last >= _PICTURE_RETRY_INTERVAL
 
+    async def _async_refresh_vehicle_list(self) -> None:
+        """Follow the account: add newly paired cars, drop the ones that left."""
+        # get_vehicles(force_init=True) appends to the list the account holds.
+        self.controller.vehicles = []
+        listed = await self.controller.get_vehicles(force_init=True)
+        for vehicle in listed:
+            self._seen_vehicles.setdefault(vehicle.vin, vehicle)
+        self.vehicles = [self._seen_vehicles[vehicle.vin] for vehicle in listed]
+
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint."""
         try:
-            if len(self.vehicles) == 0:
-                self.vehicles = await self.controller.get_vehicles()
-
+            async with asyncio.timeout(_UPDATE_TIMEOUT):
+                await self._async_refresh_vehicle_list()
                 for vehicle in self.vehicles:
                     await vehicle.get_stored_overview()
-                    # Pictures are cosmetic — best-effort, must not abort setup.
-                    await self._async_fetch_pictures(vehicle)
-
-            else:
-                async with asyncio.timeout(30):
-                    for vehicle in self.vehicles:
-                        await vehicle.get_stored_overview()
-                        # Retry pictures if the initial fetch came back empty
-                        # (e.g. a transient failure at setup); the image platform
-                        # adds the entities once they appear.
-                        if self._picture_retry_due(vehicle):
-                            await self._async_fetch_pictures(vehicle)
+                    # Pictures are cosmetic and best-effort: fetched at setup,
+                    # then once a day while still empty; the image platform
+                    # adds the entities once they appear.
+                    if self._picture_retry_due(vehicle):
+                        await self._async_fetch_pictures(vehicle)
 
         except PorscheWrongCredentialsError as exc:
             msg = f"{_AUTH_FAILED_MSG}: {exc}"
@@ -436,15 +443,12 @@ class PorscheBaseEntity(CoordinatorEntity):
         """Get the VIN (vehicle identification number) of the vehicle."""
         return self._vin
 
+    @property
+    def available(self) -> bool:
+        """Unavailable once the car has left the account."""
+        return super().available and self.vehicle in self.coordinator.vehicles
+
     async def async_added_to_hass(self) -> None:
         """When entity is added to hass."""
         await super().async_added_to_hass()
         self._handle_coordinator_update()
-
-    @callback
-    def async_entity_id_changed(self, old_entity_id: str) -> None:
-        """Let Home Assistant rename the entity in place.
-
-        Nothing here depends on the entity_id, so there is nothing to re-key.
-        """
-        super().async_entity_id_changed(old_entity_id)

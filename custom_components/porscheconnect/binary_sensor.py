@@ -280,7 +280,7 @@ class PorscheBinarySensor(BinarySensorEntity, PorscheBaseEntity):
         _LOGGER.debug(
             "Updating binary sensor '%s' of %s with state '%s'",
             self.entity_description.key,
-            self.vehicle.data["name"],
+            self._vin,
             self._attr_is_on,
             # state,
         )

@@ -521,7 +521,7 @@ class PorscheSensor(PorscheBaseEntity, SensorEntity):
         _LOGGER.debug(
             "Updating sensor '%s' of %s with state '%s'",
             self.entity_description.key,
-            self.vehicle.data["name"],
+            self._vin,
             state,
         )
 
