@@ -484,7 +484,8 @@ Reload the logger or restart HA, reproduce the issue, then attach the relevant
 log slice to the GitHub issue.
 
 The log never holds your password, a token or the unlock PIN. It does name your
-VIN and the position of the car: remove them before posting. The diagnostics download (device page → Download
+VIN: remove it before posting. The position of the car and its pairing codes
+are left out of the payload dumps. The diagnostics download (device page → Download
 diagnostics) is already redacted and is often enough.
 
 ## Known limitations
