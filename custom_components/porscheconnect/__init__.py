@@ -206,6 +206,13 @@ async def async_unload_entry(
     )
 
 
+async def async_remove_entry(
+    hass: HomeAssistant, entry: PorscheConnectConfigEntry
+) -> None:
+    """Forget the HTTP client of a deleted entry."""
+    hass.data.get(_ENTRY_CLIENTS, {}).pop(entry.entry_id, None)
+
+
 async def async_remove_config_entry_device(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,

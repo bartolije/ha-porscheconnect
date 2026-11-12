@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 import probatio as vol
+from homeassistant.config_entries import ConfigEntryState
 from homeassistant.core import HomeAssistant, ServiceCall, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers import config_validation as cv
@@ -125,7 +126,7 @@ def _resolve_vehicle(
 
     vehicles: list[PorscheVehicle] = (
         config_entry.runtime_data.vehicles
-        if config_entry is not None and hasattr(config_entry, "runtime_data")
+        if config_entry is not None and config_entry.state is ConfigEntryState.LOADED
         else []
     )
     for vehicle in vehicles:

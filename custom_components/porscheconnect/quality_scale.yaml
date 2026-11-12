@@ -1,217 +1,251 @@
+# Self-assessment against the Home Assistant integration quality scale, rule by
+# rule, checked against the official rule texts of 2026-10-16. Each comment says
+# where the rule is met; tests/test_quality_scale.py covers what a rule asks to
+# be tested.
 rules:
   # Bronze
-  action-setup: done
+  action-setup:
+    status: done
+    comment: |
+      Both actions are registered once in async_setup (services.py); a call for
+      an entry that is not loaded raises ServiceValidationError.
   appropriate-polling:
     status: done
     comment: |
-      Polls every DEFAULT_SCAN_INTERVAL (1920 s) via DataUpdateCoordinator.
-      There is no setting for it: Porsche rate-limits the API.
+      One DataUpdateCoordinator polls every DEFAULT_SCAN_INTERVAL (1920 s):
+      Porsche rate-limits the API. No setting in the UI; a scan_interval left
+      in an entry by an older release is still honoured.
   brands:
-    status: exempt
+    status: done
     comment: |
-      Brand is "Porsche" — added to home-assistant/brands separately, not
-      part of this repository.
+      The porscheconnect domain is in home-assistant/brands
+      (custom_integrations/porscheconnect); brand/ in this folder carries the
+      same icon for Home Assistant's local brand images.
   common-modules:
     status: done
-    comment: The coordinator is in coordinator.py, the base entity in entity.py.
+    comment: |
+      The coordinator is in coordinator.py, the base entity in entity.py.
   config-flow-test-coverage:
     status: done
-    comment: Tests cover happy path, wrong creds, already_configured, captcha, reauth.
+    comment: |
+      config_flow.py is covered at 100 % (lines and branches), enforced in CI.
+      User, captcha, reauth and reconfigure flows are each tested through an
+      error and then to their end; duplicates and another account are refused.
   config-flow:
     status: done
     comment: |
-      UI only. Every field of every step has a label and a data_description,
-      in all eight languages.
-  dependency-transparency: done
+      UI only. Required fields with email and password selectors; every field
+      of every step has a label and a data_description in all seven languages.
+      Credentials are stored in ConfigEntry.data; there are no options.
+  dependency-transparency:
+    status: done
+    comment: |
+      One dependency, pyporscheconnectapi-bartolije: MIT and Apache-2.0, source
+      on GitHub, tagged releases published to PyPI by a public GitHub Actions
+      workflow (trusted publishing).
   docs-actions:
     status: done
     comment: |
-      README "Services / Actions" section documents climatisation_start
-      parameters, dynamic zone behaviour (#292), and example calls.
+      README "Services / Actions": climatisation_start and climatisation_stop,
+      their parameters and example calls.
+  docs-conditions:
+    status: exempt
+    comment: |
+      The integration provides no conditions.
   docs-high-level-description: done
   docs-installation-instructions: done
   docs-removal-instructions:
     status: done
     comment: |
-      README "Removal" section: HA UI → Devices → Porsche Connect → Delete,
-      plus optional OAuth grant revocation and HACS uninstall.
-  entity-event-setup: done
+      README "Removal": Settings → Devices & services → My Porsche Connect →
+      ⋮ → Delete, then the HACS uninstall.
+  docs-triggers:
+    status: exempt
+    comment: |
+      The integration provides no triggers.
+  entity-event-setup:
+    status: done
+    comment: |
+      Entities only listen to the coordinator, through CoordinatorEntity;
+      platform listeners are registered with async_on_unload.
   entity-unique-id:
     status: done
     comment: |
-      All platforms now derive unique_id from the immutable VIN
-      (``f"{self._vin}-{description.key}"``) so renaming the car in the
-      Porsche app does not break entity history.
+      Every unique_id starts with the immutable VIN (the tracker uses the VIN
+      alone), so renaming the car in the Porsche app keeps entities and history.
   has-entity-name: done
   runtime-data:
     status: done
     comment: |
-      Coordinator is attached as ``entry.runtime_data``; every platform's
-      ``async_setup_entry`` reads from it instead of ``hass.data``.
+      The coordinator is ConfigEntry.runtime_data, typed as
+      PorscheConnectConfigEntry everywhere. The only hass.data use is the
+      per-entry HTTP client, which must outlive a reload and is dropped when
+      the entry is removed.
   test-before-configure:
     status: done
-    comment: validate_input() in config_flow performs a login round-trip.
+    comment: |
+      validate_input() in config_flow.py logs in before the entry is created.
   test-before-setup:
     status: done
     comment: |
-      ``async_setup_entry`` performs ``async_config_entry_first_refresh``
-      and converts 401 to ConfigEntryAuthFailed / other errors to
-      ConfigEntryNotReady.
+      async_setup_entry awaits the coordinator's first refresh; the coordinator
+      raises ConfigEntryAuthFailed for refused credentials, a 401 or a captcha,
+      and UpdateFailed (ConfigEntryNotReady at setup) for anything else.
   unique-config-entry:
     status: done
     comment: |
-      unique_id = email.lower().strip(); ``_abort_if_unique_id_configured``
-      enforced on user flow.
+      unique_id is the lower-cased email; the user flow aborts on a duplicate.
 
   # Silver
   action-exceptions:
     status: done
     comment: |
-      Service handlers translate PorscheExceptionError into HomeAssistantError
-      and use ServiceValidationError for invalid device ids.
-  config-entry-unloading: done
+      Entity actions (lock, switch, button, number, climate) and both services
+      raise HomeAssistantError when Porsche refuses or fails, and
+      ServiceValidationError for wrong input (unknown device, missing PIN,
+      unsupported zone).
+  config-entry-unloading:
+    status: done
+    comment: |
+      async_unload_entry unloads the platforms; listeners are removed through
+      async_on_unload. Home Assistant owns and closes the HTTP client.
   docs-configuration-parameters:
     status: exempt
-    comment: No options flow.
+    comment: |
+      No options flow.
   docs-installation-parameters: done
   entity-unavailable:
     status: done
     comment: |
-      Entities inherit from CoordinatorEntity, so ``available`` automatically
-      reflects coordinator update success.
+      Entities are unavailable when the coordinator's update fails and when
+      their car is no longer on the account (entity.py).
   integration-owner: done
   log-when-unavailable:
     status: done
     comment: |
-      DataUpdateCoordinator logs at WARNING when an update fails; auth
-      failures are surfaced through ConfigEntryAuthFailed which HA
-      narrates to the user.
+      The coordinator raises UpdateFailed, so DataUpdateCoordinator logs once
+      when Porsche becomes unreachable and once when it is back.
   parallel-updates:
     status: done
     comment: |
       Read-only platforms (sensor, binary_sensor, device_tracker, image)
-      declare ``PARALLEL_UPDATES = 0``: they read the shared coordinator.
+      declare PARALLEL_UPDATES = 0: they read the shared coordinator.
       Platforms that send commands (lock, switch, button, number, climate)
-      declare ``PARALLEL_UPDATES = 1``: one command at a time.
+      declare PARALLEL_UPDATES = 1: one command at a time.
   reauthentication-flow:
     status: done
     comment: |
-      401 / PorscheWrongCredentialsError raised from coordinator updates
-      and from initial setup trigger ConfigEntryAuthFailed, which routes
-      the user into ``async_step_reauth``.
+      Refused credentials, a 401 or a captcha during an update raise
+      ConfigEntryAuthFailed, which opens async_step_reauth. Throttled logins
+      are retried instead: the password is not in question.
   test-coverage:
     status: done
     comment: |
-      Coordinator, setup/unload, auth/reauth, config flow, unique-id
-      migration, and per-platform action tests. CI fails under 95 % line
-      coverage (pyproject.toml).
+      Every module is above 95 % (lines and branches); CI fails on any module
+      below it, not only on the total.
 
-  # Gold (declared here so review tooling sees explicit positions)
-  devices: done
+  # Gold
+  devices:
+    status: done
+    comment: |
+      One device per car: VIN as identifier and serial number, name, model,
+      model code and manufacturer.
   diagnostics:
     status: done
     comment: |
-      ``diagnostics.async_get_config_entry_diagnostics`` redacts password,
-      access/refresh tokens, addresses; masks the email local-part and VIN
-      (last 4 chars); blurs coordinates to 1 decimal. Includes per-vehicle
-      capability flags and coordinator update state.
+      diagnostics.py redacts the password, tokens, position, coordinates,
+      addresses and pairing secrets, and masks the email and the VIN.
   discovery-update-info:
     status: exempt
-    comment: Cloud-polling integration, no local discovery.
+    comment: |
+      Cloud service, nothing to discover on the network.
   discovery:
     status: exempt
-    comment: Cloud-polling integration, no local discovery.
+    comment: |
+      Cloud service, nothing to discover on the network.
   docs-data-update:
     status: done
-    comment: README "Polling and data updates" — 1920 s tick + extra refresh triggers.
+    comment: |
+      README "Polling and data updates".
   docs-examples:
     status: done
     comment: |
-      README "Examples" section: Lovelace card + 4 automation recipes
-      (pre-heat, door-open alert, charging logbook, geofence arrival).
+      README "Examples": a dashboard card and automations.
   docs-known-limitations:
     status: done
     comment: |
-      README "Known limitations": subscription required, charging-profile
-      target-SoC bug (#319), no Car Connect support, captcha at first login,
-      PCM pairing requirement, no 2FA, no push notifications.
+      README "Known limitations".
   docs-supported-devices:
     status: done
-    comment: README "Supported vehicles" — per-model capability matrix.
+    comment: |
+      README "Supported vehicles".
   docs-supported-functions:
     status: done
     comment: |
-      README "Supported entities and capabilities" — 27-row table mapping
-      each entity to its underlying capability gate.
+      README "Supported entities and capabilities": every entity with the
+      condition under which it is created.
   docs-troubleshooting:
     status: done
     comment: |
-      README "Troubleshooting": captcha, empty payload / PCM pairing,
-      reauth, unlock S-PIN, missing vehicle, debug logger recipe.
+      README "Troubleshooting".
   docs-use-cases:
     status: done
-    comment: README "Examples" doubles as use-cases (4 worked automations).
+    comment: |
+      README "Examples": each automation is a use case.
   dynamic-devices:
     status: done
     comment: |
       The coordinator reads the account's vehicle list on every refresh and
-      every platform registers a listener that creates entities for new
-      VINs — newly paired vehicles show up without a reload.
+      every platform adds entities for a new car without a reload, including a
+      car that comes back after its device was removed.
   entity-category:
     status: done
     comment: |
-      Diagnostic category applied to non-primary entities: remote_access /
-      privacy_mode / tire_pressure_status binary sensors, and the
-      ``get_current_overview`` refresh button. Primary state (battery,
-      doors, parking, range, mileage, lock, location, images, switches)
-      keeps the default user-facing category.
-  entity-device-class: done
+      Service intervals, tire pressures, contract and update timestamps, flags
+      of the account and the refresh button are diagnostic; what a driver looks
+      at (range, fuel, battery, doors, lock, position) keeps the default.
+  entity-device-class:
+    status: done
+    comment: |
+      Every entity with a matching device class has one; the rest (lock state
+      texts, charging target, service counters in days) have none that fits.
   entity-disabled-by-default:
     status: done
     comment: |
-      Disabled by default: ``charging_rate`` (redundant with charging_power),
-      ``remote_access`` binary sensor (account-side config flag), and four of
-      the five vehicle photos (only side_view stays on by default to avoid
-      shipping 5 image entities per car). Everything user-facing (battery,
-      doors, location, lock, climate, mileage, range, fuel, charging
-      status/power/finished) stays enabled.
+      Redundant or rarely used entities are disabled by default: charging
+      rate, fuel reserve, per-tire pressures, secondary service intervals,
+      remote access, spoiler and service flap, the climatisation switch (the
+      climate entity does the same) and four of the five pictures.
   entity-translations: done
   exception-translations:
     status: done
     comment: |
-      The coordinator's UpdateFailed and ConfigEntryAuthFailed (auth_failed,
-      update_failed, login_throttled, update_timeout) and all
-      HomeAssistantError / ServiceValidationError raised by the
-      integration carry ``translation_domain`` + ``translation_key`` and
-      have matching ``exceptions.*`` entries in strings.json and
-      translations/en.json (climatisation_not_supported,
-      climate_zone_not_supported, invalid_device_id,
-      no_config_entry_for_device, remote_service_failed, lock_failed,
-      unlock_failed, pin_code_missing).
+      Every error shown to the user has a translation key: the coordinator's
+      UpdateFailed and ConfigEntryAuthFailed, and the HomeAssistantError and
+      ServiceValidationError of the entity actions and services.
   icon-translations: done
   reconfiguration-flow: done
   repair-issues:
-    status: exempt
+    status: done
     comment: |
-      No actionable repair conditions detected beyond the standard
-      reauth path, which HA surfaces as a repair automatically.
+      A car without an active Porsche Connect contract raises a repair issue
+      that says how to renew it; the issue goes away when the contract is back.
   stale-devices:
     status: done
     comment: |
-      A vehicle that left the account turns unavailable on the next refresh
-      and ``async_remove_config_entry_device`` then permits its removal. It
-      is not deleted automatically: an empty list from the API would
-      otherwise wipe the user's entity settings.
+      A car missing from the account for two refreshes in a row has its device
+      removed (coordinator.py); one odd answer from Porsche removes nothing.
+      async_remove_config_entry_device also lets the user remove it by hand.
 
   # Platinum
   async-dependency: done
   inject-websession:
     status: done
     comment: |
-      A client from ``create_async_httpx_client(hass)`` is forwarded to the API
-      client (dedicated so that it can refuse zstd, which httpx2 fails to decode).
+      The library gets a client from create_async_httpx_client(hass), dedicated
+      so that it can refuse zstd, which httpx2 fails to decode.
   strict-typing:
     status: done
     comment: |
-      mypy --strict runs in CI (configuration in pyproject.toml). The library
-      is typed (py.typed) and checked with the integration.
+      mypy --strict runs in CI on the integration; the library ships py.typed
+      and the typed config entry is used throughout.

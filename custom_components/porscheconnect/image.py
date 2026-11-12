@@ -72,13 +72,13 @@ async def async_setup_entry(
     """Set up the Porsche Connect image entity from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    known_vins: set[str] = set()
+    known_vins: dict[str, object] = {}
 
     @callback
     def _async_add_entities() -> None:
         new_entities: list[PorscheImage] = []
         for vehicle in coordinator.vehicles:
-            if vehicle.vin in known_vins:
+            if known_vins.get(vehicle.vin) is vehicle:
                 continue
             vehicle_images = [
                 PorscheImage(hass, coordinator, vehicle, description)
@@ -89,7 +89,7 @@ async def async_setup_entry(
             # later refresh that finally populates picture_locations (e.g. after
             # a transient failure at setup) can still add the image entities.
             if vehicle_images:
-                known_vins.add(vehicle.vin)
+                known_vins[vehicle.vin] = vehicle
                 new_entities.extend(vehicle_images)
         if new_entities:
             async_add_entities(new_entities)

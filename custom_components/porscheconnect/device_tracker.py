@@ -30,13 +30,13 @@ async def async_setup_entry(
     """Set up the device tracker from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    known_vins: set[str] = set()
+    known_vins: dict[str, object] = {}
 
     @callback
     def _async_add_entities() -> None:
         new_entities: list[PorscheDeviceTracker] = []
         for vehicle in coordinator.vehicles:
-            if vehicle.vin in known_vins:
+            if known_vins.get(vehicle.vin) is vehicle:
                 continue
             # Not marked as known while in privacy mode, so the tracker is
             # added on a later refresh once privacy mode is turned off.
@@ -45,7 +45,7 @@ async def async_setup_entry(
                     "Vehicle is in privacy mode with location tracking disabled"
                 )
                 continue
-            known_vins.add(vehicle.vin)
+            known_vins[vehicle.vin] = vehicle
             new_entities.append(PorscheDeviceTracker(coordinator, vehicle))
         if new_entities:
             async_add_entities(new_entities)

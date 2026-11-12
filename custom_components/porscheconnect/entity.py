@@ -33,14 +33,10 @@ class PorscheBaseEntity(CoordinatorEntity):
             identifiers={(DOMAIN, self._vin)},
             name=vehicle.data.get("name") or vehicle.model_name,
             model=vehicle.data.get("modelName"),
+            model_id=(vehicle.data.get("modelType") or {}).get("code"),
             manufacturer="Porsche",
             serial_number=self._vin,
         )
-
-    @property
-    def vin(self) -> str:
-        """Get the VIN (vehicle identification number) of the vehicle."""
-        return self._vin
 
     @property
     def available(self) -> bool:

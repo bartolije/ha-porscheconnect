@@ -361,5 +361,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "connect_inactive": {
+      "title": "Inget aktivt Porsche Connect-avtal för {vehicle}",
+      "description": "Porsche rapporterar inget aktivt Porsche Connect-avtal för {vehicle}, så de flesta av dess entiteter är inte tillgängliga. Förnya avtalet i My Porsche-appen eller i Porsche Connect Store; entiteterna kommer tillbaka vid nästa uppdatering."
+    }
   }
 }

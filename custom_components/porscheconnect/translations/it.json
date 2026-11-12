@@ -361,5 +361,11 @@
         }
       }
     }
+  },
+  "issues": {
+    "connect_inactive": {
+      "title": "Nessun contratto Porsche Connect attivo per {vehicle}",
+      "description": "Porsche non segnala alcun contratto Porsche Connect attivo per {vehicle}, quindi la maggior parte delle sue entità non è disponibile. Rinnova il contratto nell'app My Porsche o nel Porsche Connect Store; le entità tornano al prossimo aggiornamento."
+    }
   }
 }

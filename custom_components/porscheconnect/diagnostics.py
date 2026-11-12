@@ -50,15 +50,13 @@ TO_REDACT_VEHICLE_DATA: set[str] = {
     "VTS_CERTIFICATE_LIST",
 }
 
+_COORDINATE_KEYS = {"latitude", "lat", "longitude", "lon", "lng"}
+
 # Local-part of an email is masked once it gets longer than this threshold.
 _EMAIL_LOCAL_KEEP = 2
 
 # VIN suffix length we keep visible (last N chars).
 _VIN_SUFFIX_KEEP = 4
-
-# Coordinates are rounded to this many decimals (≈ 11 km precision at the
-# equator) — enough to debug geofencing without leaking the user's home.
-_COORD_DECIMALS = 1
 
 
 def _mask_email(email: str | None) -> str | None:
@@ -82,28 +80,13 @@ def _mask_vin(vin: str | None) -> str | None:
     return "***" + vin[-_VIN_SUFFIX_KEEP:]
 
 
-def _round_coord(value: object) -> object:
-    """Round a latitude/longitude to one decimal place."""
-    try:
-        return round(float(value), _COORD_DECIMALS)  # type: ignore[arg-type]
-    except (TypeError, ValueError):
-        return value
-
-
 def _redact_vehicle_data(data: object) -> object:
-    """Walk a vehicle ``.data`` payload, redacting sensitive fields.
-
-    Coordinates are blurred to one decimal instead of being fully redacted —
-    that's enough to break geolocation but still useful for debugging
-    "is the API returning a sensible position at all?".
-    """
+    """Walk a vehicle ``.data`` payload, redacting sensitive fields."""
     if isinstance(data, dict):
         result: dict[str, object] = {}
         for key, value in data.items():
             lower_key = key.lower()
-            if lower_key in {"latitude", "lat", "longitude", "lon"}:
-                result[key] = _round_coord(value)
-            elif key in TO_REDACT_VEHICLE_DATA:
+            if key in TO_REDACT_VEHICLE_DATA or lower_key in _COORDINATE_KEYS:
                 result[key] = "**REDACTED**"
             elif lower_key == "vin":
                 result[key] = _mask_vin(value if isinstance(value, str) else None)

@@ -15,6 +15,8 @@ from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.account import PorscheConnectAccount
@@ -36,6 +38,10 @@ HTTP_UNAUTHORIZED = 401
 # Picture locations are cosmetic: when the API has none for a car, ask again
 # once a day rather than on every refresh of a rate-limited API.
 _PICTURE_RETRY_INTERVAL = timedelta(days=1)
+
+# A car missing from this many refreshes in a row has left the account: one
+# odd answer from Porsche must not delete a device and its entity settings.
+_STALE_AFTER_REFRESHES = 2
 
 # One refresh: the vehicle list, then one overview per car (seconds).
 _UPDATE_TIMEOUT = 60
@@ -94,7 +100,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
     def __init__(
         self,
         hass: HomeAssistant,
-        config_entry: ConfigEntry,
+        config_entry: PorscheConnectConfigEntry,
         controller: PorscheConnectAccount,
     ) -> None:
         """Initialise the controller."""
@@ -104,6 +110,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         # car that comes back to the account must get the same one.
         self._seen_vehicles: dict[str, PorscheVehicle] = {}
         self._picture_attempts: dict[str, datetime] = {}
+        self._missed_refreshes: dict[str, int] = {}
 
         scan_interval = timedelta(
             seconds=config_entry.options.get(
@@ -161,6 +168,50 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         for vehicle in listed:
             self._seen_vehicles.setdefault(vehicle.vin, vehicle)
         self.vehicles = [self._seen_vehicles[vehicle.vin] for vehicle in listed]
+        self._async_remove_stale_devices({vehicle.vin for vehicle in listed})
+
+    @callback
+    def _async_remove_stale_devices(self, listed_vins: set[str]) -> None:
+        """Remove the devices of cars that left the account."""
+        device_registry = dr.async_get(self.hass)
+        missed: dict[str, int] = {}
+        for device in dr.async_entries_for_config_entry(
+            device_registry, self.config_entry.entry_id
+        ):
+            vins = {value for domain, value in device.identifiers if domain == DOMAIN}
+            if not vins or vins & listed_vins:
+                continue
+            vin = next(iter(vins))
+            missed[vin] = self._missed_refreshes.get(vin, 0) + 1
+            if missed[vin] < _STALE_AFTER_REFRESHES:
+                continue
+            del missed[vin]
+            # A car that comes back later is set up again from scratch.
+            self._seen_vehicles.pop(vin, None)
+            ir.async_delete_issue(self.hass, DOMAIN, f"connect_inactive_{vin}")
+            device_registry.async_update_device(
+                device.id, remove_config_entry_id=self.config_entry.entry_id
+            )
+        self._missed_refreshes = missed
+
+    @callback
+    def _async_update_contract_issue(self, vehicle: PorscheVehicle) -> None:
+        """Tell the user when a car has no active Porsche Connect contract."""
+        issue_id = f"connect_inactive_{vehicle.vin}"
+        if vehicle.has_porsche_connect:
+            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            return
+        ir.async_create_issue(
+            self.hass,
+            DOMAIN,
+            issue_id,
+            is_fixable=False,
+            severity=ir.IssueSeverity.WARNING,
+            translation_key="connect_inactive",
+            translation_placeholders={
+                "vehicle": vehicle.data.get("name") or vehicle.model_name
+            },
+        )
 
     async def _async_update_data(self) -> dict[str, Any]:
         """Fetch data from API endpoint."""
@@ -169,6 +220,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                 await self._async_refresh_vehicle_list()
                 for vehicle in self.vehicles:
                     await vehicle.get_stored_overview()
+                    self._async_update_contract_issue(vehicle)
                     # Pictures are cosmetic and best-effort: fetched at setup,
                     # then once a day while still empty; the image platform
                     # adds the entities once they appear.
