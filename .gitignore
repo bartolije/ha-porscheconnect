@@ -5,3 +5,7 @@ pythonenv*
 venv
 .venv
 .direnv
+.DS_Store
+.mypy_cache
+.pytest_cache
+.ruff_cache
