@@ -14,7 +14,7 @@ from homeassistant.components.binary_sensor import (
 )
 from homeassistant.const import EntityCategory
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from .coordinator import (
@@ -64,7 +64,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         translation_key="remote_access",
         measurement_node="REMOTE_ACCESS_AUTHORIZATION",
         measurement_leaf="isEnabled",
-        device_class=None,
         entity_category=EntityCategory.DIAGNOSTIC,
         entity_registry_enabled_default=False,
         # Capability gate: the API drops this measurement (NOT_SUPPORTED) on
@@ -78,7 +77,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         translation_key="privacy_mode",
         measurement_node="GLOBAL_PRIVACY_MODE",
         measurement_leaf="isEnabled",
-        device_class=None,
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PorscheBinarySensorEntityDescription(
@@ -86,7 +84,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         translation_key="parking_brake",
         measurement_node="PARKING_BRAKE",
         measurement_leaf="isOn",
-        device_class=None,
         # Capability gate — see remote_access above.
         is_available=lambda v: "PARKING_BRAKE" in v.data,
     ),
@@ -123,6 +120,7 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         value_fn=_cluster_problem,
         attr_fn=_cluster_alerts,
         device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
         is_available=has_measurement("INSTRUMENT_CLUSTER_ALERTS"),
     ),
 ]
@@ -219,7 +217,7 @@ SENSOR_TYPES.extend(_open_state_descriptions())
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the sensors from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data

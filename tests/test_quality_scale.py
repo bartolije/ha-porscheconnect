@@ -61,156 +61,6 @@ def _existing_entry(hass: HomeAssistant) -> MockConfigEntry:
     return entry
 
 
-# -- config flow: after each error, fix the cause and finish the flow --------
-
-
-@pytest.mark.parametrize(
-    ("failure", "error"),
-    [
-        (PorscheWrongCredentialsError("nope"), "invalid_auth"),
-        (PorscheExceptionError("down"), "cannot_connect"),
-    ],
-)
-async def test_user_flow_recovers_from_an_error(
-    hass: HomeAssistant, failure: Exception, error: str
-) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    with (
-        patch(CONNECTION, side_effect=[_login(failure), _login()]),
-        patch("custom_components.porscheconnect.async_setup_entry", return_value=True),
-    ):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=dict(CREDENTIALS)
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["errors"] == {"base": error}
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=dict(CREDENTIALS)
-        )
-        await hass.async_block_till_done()
-
-    assert result["type"] == FlowResultType.CREATE_ENTRY
-    assert result["data"][CONF_EMAIL] == TEST_EMAIL
-
-
-@pytest.mark.parametrize(
-    ("failure", "error"),
-    [
-        (PorscheWrongCredentialsError("wrong code"), "invalid_auth"),
-        (PorscheExceptionError("down"), "cannot_connect"),
-    ],
-)
-async def test_captcha_flow_recovers_from_a_refused_code(
-    hass: HomeAssistant, failure: Exception, error: str
-) -> None:
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    with (
-        patch(
-            CONNECTION,
-            side_effect=[
-                _captcha(),
-                _login(failure),
-                # Not a data URI: shown as it is.
-                _captcha("https://example.invalid/captcha.png"),
-                _login(),
-            ],
-        ),
-        patch("custom_components.porscheconnect.async_setup_entry", return_value=True),
-    ):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=dict(CREDENTIALS)
-        )
-        assert result["step_id"] == "captcha"
-        # Opening the step again shows the same form.
-        result = await hass.config_entries.flow.async_configure(result["flow_id"])
-        assert result["step_id"] == "captcha"
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={CONF_CAPTCHA_CODE: "WRONG"}
-        )
-        assert result["step_id"] == "user"
-        assert result["errors"] == {"base": error}
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=dict(CREDENTIALS)
-        )
-        assert result["step_id"] == "captcha"
-        assert "example.invalid" in result["description_placeholders"]["captcha_img"]
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input={CONF_CAPTCHA_CODE: "RIGHT"}
-        )
-        await hass.async_block_till_done()
-
-    assert result["type"] == FlowResultType.CREATE_ENTRY
-
-
-@pytest.mark.parametrize(
-    ("failure", "error"),
-    [
-        (PorscheWrongCredentialsError("nope"), "invalid_auth"),
-        (PorscheExceptionError("down"), "cannot_connect"),
-    ],
-)
-@pytest.mark.parametrize(
-    ("source", "reason"),
-    [
-        (config_entries.SOURCE_REAUTH, "reauth_successful"),
-        (config_entries.SOURCE_RECONFIGURE, "reconfigure_successful"),
-    ],
-)
-async def test_reauth_and_reconfigure_recover_from_an_error(
-    hass: HomeAssistant, source: str, reason: str, failure: Exception, error: str
-) -> None:
-    entry = _existing_entry(hass)
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN,
-        context={"source": source, "entry_id": entry.entry_id},
-        data=dict(entry.data),
-    )
-    first = (
-        dict(CREDENTIALS)
-        if source == config_entries.SOURCE_REAUTH
-        else {CONF_PASSWORD: TEST_PASSWORD}
-    )
-    with (
-        patch(
-            CONNECTION,
-            side_effect=[_login(failure), _login()],
-        ),
-        patch("custom_components.porscheconnect.async_setup_entry", return_value=True),
-    ):
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=first
-        )
-        assert result["type"] == FlowResultType.FORM
-        assert result["errors"] == {"base": error}
-        assert entry.data[CONF_PASSWORD] == "old-password"
-
-        result = await hass.config_entries.flow.async_configure(
-            result["flow_id"], user_input=dict(CREDENTIALS)
-        )
-        await hass.async_block_till_done()
-
-    assert result["type"] == FlowResultType.ABORT
-    assert result["reason"] == reason
-    assert entry.data[CONF_PASSWORD] == TEST_PASSWORD
-
-
-async def test_empty_form_is_refused_by_the_schema(hass: HomeAssistant) -> None:
-    """Both fields are required: an empty submit never reaches the login."""
-    result = await hass.config_entries.flow.async_init(
-        DOMAIN, context={"source": config_entries.SOURCE_USER}
-    )
-    with pytest.raises(InvalidData):
-        await hass.config_entries.flow.async_configure(result["flow_id"], user_input={})
-
-
 # -- stale devices, dynamic devices, repair issues -------------------------
 
 
@@ -270,11 +120,13 @@ async def test_inactive_connect_contract_raises_a_repair_issue(
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     issues = ir.async_get(hass)
-    issue_id = f"connect_inactive_{mock_vehicle.vin}"
+    issue_id = f"connect_inactive_{mock_config_entry.entry_id}_{mock_vehicle.vin}"
 
     issue = issues.async_get_issue(DOMAIN, issue_id)
     assert issue.translation_key == "connect_inactive"
     assert issue.translation_placeholders == {"vehicle": "Taycan"}
+    # Bound to its entry: Home Assistant hides it with the entry and removes it with it.
+    assert issue.config_entry_id == mock_config_entry.entry_id
 
     # Contract back: the issue goes away and the entry is set up again, since
     # entities are created from what the car reports at setup.
@@ -294,64 +146,61 @@ async def test_inactive_connect_contract_raises_a_repair_issue(
     assert issues.async_get_issue(DOMAIN, issue_id) is None
 
 
-async def test_removing_the_entry_forgets_its_http_client(
-    hass: HomeAssistant,
-    mock_config_entry: MockConfigEntry,
-    mock_connection_cls,
-    mock_account_cls,
-) -> None:
-    from custom_components.porscheconnect import _ENTRY_CLIENTS
-
-    mock_config_entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
-    assert mock_config_entry.entry_id in hass.data[_ENTRY_CLIENTS]
-
-    assert await hass.config_entries.async_remove(mock_config_entry.entry_id)
-    await hass.async_block_till_done()
-
-    assert mock_config_entry.entry_id not in hass.data[_ENTRY_CLIENTS]
-
-
 # -- last uncovered paths ----------------------------------------------------
 
 
-async def test_diagnostics_mask_identifiers_and_drop_coordinates(
+async def test_diagnostics_hold_nothing_that_identifies_the_owner(
     hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
     mock_vehicle,
     mock_connection_cls,
     mock_account_cls,
 ) -> None:
+    import json
+
     from custom_components.porscheconnect.diagnostics import (
-        _mask_email,
         _mask_vin,
         async_get_config_entry_diagnostics,
     )
 
-    assert _mask_email("a@example.com") == "a***@example.com"
-    assert _mask_email("not an email") == "not an email"
     assert _mask_vin("123") == "***123"
     assert _mask_vin(None) is None
 
-    entry = MockConfigEntry(
-        domain=DOMAIN,
-        title="",
-        unique_id=TEST_EMAIL,
-        data={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
-    )
     mock_vehicle.data.update(
-        {"trips": [{"lat": 48.85837, "lng": 2.29448, "vin": 42}], "PAIRING_CODE": "x"}
+        {
+            "customName": "Jeremie's Taycan",
+            "trips": [{"lat": 48.85837, "lng": 2.29448, "vin": 42}],
+            "PAIRING_CODE": "pairing-secret",
+            "CHARGING_PROFILES": [{"name": "Home", "position": {"x": 48.85837}}],
+            "TIMERS": [{"departure": "07:30"}],
+        }
     )
-    entry.add_to_hass(hass)
-    assert await hass.config_entries.async_setup(entry.entry_id)
+    mock_vehicle.data["name"] = "Jeremie's Taycan"
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
 
-    dump = await async_get_config_entry_diagnostics(hass, entry)
+    dump = await async_get_config_entry_diagnostics(hass, mock_config_entry)
 
-    assert dump["entry"]["data"][CONF_PASSWORD] == "**REDACTED**"
-    assert dump["entry"]["data"][CONF_EMAIL] == "te***@example.com"
-    trip = dump["vehicles"][0]["data"]["trips"][0]
-    assert trip == {"lat": "**REDACTED**", "lng": "**REDACTED**", "vin": None}
+    assert dump["entry"]["data"] == {
+        CONF_EMAIL: "**REDACTED**",
+        CONF_PASSWORD: "**REDACTED**",
+        "access_token": "**REDACTED**",
+    }
+    assert "title" not in dump["entry"]
+    data = dump["vehicles"][0]["data"]
+    assert data["trips"] == [{"lat": "**REDACTED**", "lng": "**REDACTED**", "vin": None}]
+    for redacted in ("customName", "name", "PAIRING_CODE", "CHARGING_PROFILES", "TIMERS"):
+        assert data[redacted] == "**REDACTED**"
+    text = json.dumps(dump, default=str)
+    for secret in ("example.com", "tester", TEST_PASSWORD, "Jeremie", "07:30", "Home"):
+        assert secret not in text
+    assert mock_vehicle.vin not in text
+    assert dump["vehicles"][0]["vin"] == "***" + mock_vehicle.vin[-4:]
+    assert dump["coordinator"] == {
+        "last_update_success": True,
+        "update_interval_seconds": 1920.0,
+    }
 
 
 async def test_image_is_loaded_from_its_url(

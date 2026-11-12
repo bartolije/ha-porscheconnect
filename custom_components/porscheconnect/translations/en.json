@@ -4,7 +4,6 @@
       "already_configured": "Device is already configured",
       "reauth_successful": "Re-authentication was successful",
       "reconfigure_successful": "Reconfiguration was successful",
-      "unique_id_mismatch": "The email address does not match the configured Porsche Connect account",
       "already_in_progress": "Configuration flow is already in progress"
     },
     "error": {
@@ -33,7 +32,7 @@
           "captcha_code": "The characters shown in the picture above."
         }
       },
-      "change_password": {
+      "reconfigure": {
         "title": "Change the password",
         "description": "Enter the new password of the Porsche account {email}.",
         "data": {
@@ -41,6 +40,16 @@
         },
         "data_description": {
           "password": "The new password of your My Porsche account."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Sign in again",
+        "description": "Porsche no longer accepts the saved sign-in for {email}. Enter the password of this account.",
+        "data": {
+          "password": "Password"
+        },
+        "data_description": {
+          "password": "The password of your My Porsche account."
         }
       }
     }
@@ -318,6 +327,12 @@
     },
     "update_timeout": {
       "message": "Porsche took too long to answer."
+    },
+    "account_blocked": {
+      "message": "Porsche has blocked access for this account: {error}. Check the account in the My Porsche app, then reload the integration."
+    },
+    "pin_code_invalid": {
+      "message": "The PIN is the four-digit security PIN of the My Porsche app."
     }
   },
   "services": {
@@ -365,7 +380,7 @@
   "issues": {
     "connect_inactive": {
       "title": "No active Porsche Connect contract for {vehicle}",
-      "description": "Porsche reports no active Porsche Connect contract for {vehicle}, so most of its entities are not available. Renew the contract in the My Porsche app or on the Porsche Connect Store; the entities come back at the next refresh."
+      "description": "Porsche reports no active Porsche Connect contract for {vehicle}, so some of its data may be missing or out of date. Renew the contract in the My Porsche app or on the Porsche Connect Store; the entities come back by themselves once it is active again."
     }
   }
 }

@@ -6,7 +6,7 @@ from dataclasses import dataclass
 
 from homeassistant.components.image import Image, ImageEntity, ImageEntityDescription
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -67,7 +67,7 @@ IMAGE_TYPES: list[PorscheImageEntityDescription] = [
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Porsche Connect image entity from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data

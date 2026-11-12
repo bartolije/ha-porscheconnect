@@ -103,7 +103,11 @@ jobs:
           low = {
               name: round(data["summary"]["percent_covered"], 1)
               for name, data in files.items()
-              if data["summary"]["percent_covered"] < (100 if name.endswith("config_flow.py") else 95)
+              if not (
+                  data["summary"]["percent_covered"] == 100
+                  if name.endswith("config_flow.py")
+                  else data["summary"]["percent_covered"] > 95
+              )
           }
           print(low or f"{len(files)} modules checked")
           sys.exit(1 if low else 0)

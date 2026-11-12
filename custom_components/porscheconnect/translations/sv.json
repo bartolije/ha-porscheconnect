@@ -4,7 +4,6 @@
       "already_configured": "Enheten är redan konfigurerad",
       "reauth_successful": "Återautentiseringen lyckades",
       "reconfigure_successful": "Omkonfigureringen lyckades",
-      "unique_id_mismatch": "E-postadressen matchar inte det konfigurerade Porsche Connect-kontot",
       "already_in_progress": "Konfigurationen pågår redan"
     },
     "error": {
@@ -33,7 +32,7 @@
           "captcha_code": "Tecknen som visas i bilden ovan."
         }
       },
-      "change_password": {
+      "reconfigure": {
         "title": "Ändra lösenordet",
         "description": "Ange det nya lösenordet för Porsche-kontot {email}.",
         "data": {
@@ -41,6 +40,16 @@
         },
         "data_description": {
           "password": "Det nya lösenordet till ditt My Porsche-konto."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Logga in igen",
+        "description": "Porsche godtar inte längre den sparade inloggningen för {email}. Ange lösenordet för det här kontot.",
+        "data": {
+          "password": "Lösenord"
+        },
+        "data_description": {
+          "password": "Lösenordet till ditt My Porsche-konto."
         }
       }
     }
@@ -318,6 +327,12 @@
     },
     "update_timeout": {
       "message": "Porsche tog för lång tid på sig att svara."
+    },
+    "account_blocked": {
+      "message": "Porsche har spärrat åtkomsten för det här kontot: {error}. Kontrollera kontot i My Porsche-appen och ladda sedan om integrationen."
+    },
+    "pin_code_invalid": {
+      "message": "PIN-koden är den fyrsiffriga säkerhetskoden i My Porsche-appen."
     }
   },
   "services": {
@@ -365,7 +380,7 @@
   "issues": {
     "connect_inactive": {
       "title": "Inget aktivt Porsche Connect-avtal för {vehicle}",
-      "description": "Porsche rapporterar inget aktivt Porsche Connect-avtal för {vehicle}, så de flesta av dess entiteter är inte tillgängliga. Förnya avtalet i My Porsche-appen eller i Porsche Connect Store; entiteterna kommer tillbaka vid nästa uppdatering."
+      "description": "Porsche rapporterar inget aktivt Porsche Connect-avtal för {vehicle}, så vissa uppgifter kan saknas eller vara inaktuella. Förnya avtalet i My Porsche-appen eller i Porsche Connect Store; entiteterna kommer tillbaka av sig själva när det är aktivt igen."
     }
   }
 }

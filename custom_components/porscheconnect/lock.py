@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import logging
+import re
 from typing import Any
 
 from homeassistant.components.lock import CONF_DEFAULT_CODE, LockEntity
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -25,11 +26,14 @@ _LOGGER = logging.getLogger(__name__)
 # One command at a time: the car handles them in sequence.
 PARALLEL_UPDATES = 1
 
+# The security PIN of the Porsche app.
+_PIN_FORMAT = re.compile(r"\d{4}")
+
 
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Porsche Connect lock entity from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
@@ -64,7 +68,7 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
         """Initialize the lock."""
         super().__init__(coordinator, vehicle)
 
-        self._attr_unique_id = f"{self._vin}-lock"
+        self._attr_unique_id = self._vin
 
     async def async_lock(self, **kwargs: Any) -> None:
         """Lock the vehicle."""
@@ -93,6 +97,12 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
             lock_options: dict[str, Any] = options.get(LOCK_DOMAIN) or {}
             pin = lock_options.get(CONF_DEFAULT_CODE)
 
+        if pin and not _PIN_FORMAT.fullmatch(pin):
+            # Refused here, before a challenge is asked from Porsche for nothing.
+            raise ServiceValidationError(
+                translation_domain=DOMAIN,
+                translation_key="pin_code_invalid",
+            )
         if pin:
             try:
                 await self.vehicle.remote_services.unlock_vehicle(pin)

@@ -12,7 +12,7 @@ from homeassistant.components.climate import (
 from homeassistant.const import ATTR_TEMPERATURE, UnitOfTemperature
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -38,7 +38,7 @@ _HVAC_MODES = [HVACMode.OFF, HVACMode.HEAT_COOL]
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Porsche Connect climate entity from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
@@ -85,7 +85,7 @@ class PorscheClimate(PorscheBaseEntity, ClimateEntity):
     ) -> None:
         """Initialise the climate entity."""
         super().__init__(coordinator, vehicle)
-        self._attr_unique_id = f"{self._vin}-climate"
+        self._attr_unique_id = self._vin
         # Start from the target the car reports; the user's later choice is kept
         # until climatisation runs, then the car's target is followed again.
         reported = vehicle.climatisation_target_temperature

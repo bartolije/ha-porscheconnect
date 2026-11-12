@@ -29,11 +29,7 @@
         "default": "mdi:fan"
       },
       "direct_charging": {
-        "default": "mdi:ev-station",
-        "state": {
-          "on": "mdi:ev-station",
-          "off": "mdi:ev-station"
-        }
+        "default": "mdi:ev-station"
       }
     },
     "sensor": {
