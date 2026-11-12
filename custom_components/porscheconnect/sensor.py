@@ -50,9 +50,9 @@ class PorscheSensorEntityDescription(SensorEntityDescription):
     # Custom extractor for values that don't live at a fixed 2-level path
     # (e.g. per-tire pressure deltas under TIRE_PRESSURE.<tire>.<field>).
     # When present, takes priority over measurement_node / _leaf.
-    value_fn: (
-        Callable[[PorscheVehicle], float | int | str | datetime | None] | None
-    ) = None
+    value_fn: Callable[[PorscheVehicle], float | int | str | datetime | None] | None = (
+        None
+    )
     is_available: Callable[[PorscheVehicle], bool] = lambda v: v.has_porsche_connect
 
 
@@ -67,6 +67,7 @@ def _tire_delta(tire: str) -> Callable[[PorscheVehicle], float | None]:
 
         {"frontLeftTire": {"differenceBar": 0.05}, ...}
     """
+
     def _extract(v: PorscheVehicle) -> float | None:
         tp = v.tire_pressures or {}
         leaf = tp.get(tire)
@@ -74,6 +75,7 @@ def _tire_delta(tire: str) -> Callable[[PorscheVehicle], float | None]:
             return None
         delta = leaf.get("differenceBar")
         return float(delta) if isinstance(delta, (int, float)) else None
+
     return _extract
 
 
@@ -116,7 +118,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         native_unit_of_measurement=PERCENTAGE,
         state_class=None,
         suggested_display_precision=0,
-        icon="mdi:battery-high",
         is_available=lambda v: v.has_electric_drivetrain,
     ),
     PorscheSensorEntityDescription(
@@ -124,7 +125,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="charging_status",
         measurement_node="CHARGING_SUMMARY",
         measurement_leaf="status",
-        icon="mdi:battery-charging",
         device_class=SensorDeviceClass.ENUM,
         is_available=lambda v: v.has_electric_drivetrain,
     ),
@@ -136,7 +136,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="charging_rate",
         measurement_node="CHARGING_RATE",
         measurement_leaf="chargingRate-kph",
-        icon="mdi:speedometer",
         device_class=SensorDeviceClass.SPEED,
         native_unit_of_measurement=UnitOfSpeed.KILOMETERS_PER_HOUR,
         is_available=lambda v: v.has_electric_drivetrain,
@@ -147,7 +146,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="charging_finished",
         measurement_node="CHARGING_SUMMARY",
         measurement_leaf="targetDateTimeWithOffset",
-        icon="mdi:clock-end",
         device_class=SensorDeviceClass.TIMESTAMP,
         is_available=lambda v: v.has_electric_drivetrain,
     ),
@@ -156,7 +154,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="charging_power",
         measurement_node="CHARGING_RATE",
         measurement_leaf="chargingPowerkW",
-        icon="mdi:lightning-bolt-circle",
         device_class=SensorDeviceClass.POWER,
         native_unit_of_measurement=UnitOfPower.KILO_WATT,
         is_available=lambda v: v.has_electric_drivetrain,
@@ -166,7 +163,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="remaining_range_electric",
         measurement_node="E_RANGE",
         measurement_leaf="kilometers",
-        icon="mdi:gauge",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.MEASUREMENT,
@@ -199,7 +195,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="mileage",
         measurement_node="MILEAGE",
         measurement_leaf="kilometers",
-        icon="mdi:counter",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.TOTAL_INCREASING,
@@ -210,7 +205,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="remaining_range",
         measurement_node="RANGE",
         measurement_leaf="kilometers",
-        icon="mdi:gas-station",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         state_class=SensorStateClass.MEASUREMENT,
@@ -222,7 +216,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="fuel_level",
         measurement_node="FUEL_LEVEL",
         measurement_leaf="percent",
-        icon="mdi:gas-station",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
@@ -235,7 +228,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="fuel_reserve",
         measurement_node="FUEL_RESERVE",
         measurement_leaf="percent",
-        icon="mdi:gas-station-outline",
         native_unit_of_measurement=PERCENTAGE,
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=0,
@@ -298,7 +290,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         key="connect_contract_end",
         translation_key="connect_contract_end",
         value_fn=_contract_end,
-        icon="mdi:file-certificate-outline",
         device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
         is_available=has_measurement("CONNECT_CONTRACT"),
@@ -310,7 +301,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_distance",
         measurement_node=_MONTHLY,
         measurement_leaf="distanceKm",
-        icon="mdi:map-marker-distance",
         device_class=SensorDeviceClass.DISTANCE,
         native_unit_of_measurement=UnitOfLength.KILOMETERS,
         suggested_display_precision=0,
@@ -321,7 +311,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_driving_time",
         measurement_node=_MONTHLY,
         measurement_leaf="drivingTimeMinutes",
-        icon="mdi:timer-outline",
         device_class=SensorDeviceClass.DURATION,
         native_unit_of_measurement=UnitOfTime.MINUTES,
         is_available=has_measurement(_MONTHLY),
@@ -331,7 +320,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_trips",
         measurement_node=_MONTHLY,
         measurement_leaf="tripsTaken",
-        icon="mdi:road-variant",
         is_available=has_measurement(_MONTHLY),
     ),
     PorscheSensorEntityDescription(
@@ -339,7 +327,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_fuel_consumption",
         measurement_node=_MONTHLY,
         measurement_leaf="avgLiterPerHundredKm",
-        icon="mdi:gas-station",
         native_unit_of_measurement="L/100km",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -350,7 +337,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_electric_consumption",
         measurement_node=_MONTHLY,
         measurement_leaf="avgKwhPerHundredKm",
-        icon="mdi:lightning-bolt",
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -360,7 +346,6 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         key="battery_energy_status",
         translation_key="battery_energy_status",
         value_fn=_battery_energy_status,
-        icon="mdi:car-battery",
         device_class=SensorDeviceClass.ENUM,
         options=BATTERY_ENERGY_STATUSES,
         entity_category=EntityCategory.DIAGNOSTIC,
@@ -425,7 +410,6 @@ def _service_descriptions() -> list[PorscheSensorEntityDescription]:
                 translation_key=f"{key_prefix}_distance",
                 measurement_node=range_node,
                 measurement_leaf="kilometers",
-                icon="mdi:car-wrench",
                 device_class=SensorDeviceClass.DISTANCE,
                 native_unit_of_measurement=UnitOfLength.KILOMETERS,
                 state_class=SensorStateClass.MEASUREMENT,
@@ -441,7 +425,6 @@ def _service_descriptions() -> list[PorscheSensorEntityDescription]:
                 translation_key=f"{key_prefix}_time",
                 measurement_node=time_node,
                 measurement_leaf="days",
-                icon="mdi:wrench-clock",
                 device_class=SensorDeviceClass.DURATION,
                 native_unit_of_measurement=UnitOfTime.DAYS,
                 state_class=SensorStateClass.MEASUREMENT,

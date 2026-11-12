@@ -35,6 +35,77 @@
           "off": "mdi:ev-station"
         }
       }
+    },
+    "sensor": {
+      "charging_target": {
+        "default": "mdi:battery-high"
+      },
+      "charging_status": {
+        "default": "mdi:battery-charging"
+      },
+      "charging_rate": {
+        "default": "mdi:speedometer"
+      },
+      "charging_finished": {
+        "default": "mdi:clock-end"
+      },
+      "charging_power": {
+        "default": "mdi:lightning-bolt-circle"
+      },
+      "remaining_range_electric": {
+        "default": "mdi:gauge"
+      },
+      "mileage": {
+        "default": "mdi:counter"
+      },
+      "remaining_range": {
+        "default": "mdi:gas-station"
+      },
+      "fuel_level": {
+        "default": "mdi:gas-station"
+      },
+      "fuel_reserve": {
+        "default": "mdi:gas-station-outline"
+      },
+      "connect_contract_end": {
+        "default": "mdi:file-certificate-outline"
+      },
+      "monthly_distance": {
+        "default": "mdi:map-marker-distance"
+      },
+      "monthly_driving_time": {
+        "default": "mdi:timer-outline"
+      },
+      "monthly_trips": {
+        "default": "mdi:road-variant"
+      },
+      "monthly_fuel_consumption": {
+        "default": "mdi:gas-station"
+      },
+      "monthly_electric_consumption": {
+        "default": "mdi:lightning-bolt"
+      },
+      "battery_energy_status": {
+        "default": "mdi:car-battery"
+      },
+      "main_service_distance": {
+        "default": "mdi:car-wrench"
+      },
+      "main_service_time": {
+        "default": "mdi:wrench-clock"
+      },
+      "oil_service_distance": {
+        "default": "mdi:car-wrench"
+      },
+      "oil_service_time": {
+        "default": "mdi:wrench-clock"
+      },
+      "intermediate_service_distance": {
+        "default": "mdi:car-wrench"
+      },
+      "intermediate_service_time": {
+        "default": "mdi:wrench-clock"
+      }
     }
   }
 }

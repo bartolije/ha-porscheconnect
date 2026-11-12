@@ -6,9 +6,9 @@ climatisation_start:
         device:
           integration: porscheconnect
     temperature:
-      example: "21"
+      example: "20"
       required: false
-      default: 21
+      default: 20
       selector:
         number:
           min: 15

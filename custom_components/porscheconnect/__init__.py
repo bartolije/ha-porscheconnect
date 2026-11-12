@@ -205,7 +205,7 @@ async def _async_migrate_entity_unique_ids(
     def _migrate(entity_entry: er.RegistryEntry) -> dict[str, str] | None:
         for old_prefix, new_prefix in prefixes:
             if entity_entry.unique_id.startswith(old_prefix):
-                key = entity_entry.unique_id[len(old_prefix):]
+                key = entity_entry.unique_id[len(old_prefix) :]
                 new_unique_id = f"{new_prefix}{_UPSTREAM_KEY_RENAMES.get(key, key)}"
                 # An entity left over from an earlier install may already hold
                 # the target id: keep it, the old one stays an orphan.
@@ -282,7 +282,6 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         # Every car seen since setup: entities keep their vehicle object, so a
         # car that comes back to the account must get the same one.
         self._seen_vehicles: dict[str, PorscheVehicle] = {}
-        self.hass = hass
         self._picture_attempts: dict[str, datetime] = {}
 
         scan_interval = timedelta(
@@ -304,7 +303,10 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         )
 
     def get_vehicle_data_leaf(
-        self, vehicle: PorscheVehicle, node: str | None, leaf: str | None,
+        self,
+        vehicle: PorscheVehicle,
+        node: str | None,
+        leaf: str | None,
     ) -> Any:
         """Get data value leaf from dict."""
         if node is None or leaf is None:
@@ -318,7 +320,9 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             await vehicle.get_picture_locations()
         except PorscheExceptionError as exc:
             _LOGGER.debug(
-                "Could not fetch picture locations for %s: %s", vehicle.vin, exc,
+                "Could not fetch picture locations for %s: %s",
+                vehicle.vin,
+                exc,
             )
 
     def _picture_retry_due(self, vehicle: PorscheVehicle) -> bool:
