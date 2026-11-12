@@ -11,12 +11,16 @@ from homeassistant import exceptions
 from homeassistant.config_entries import (
     SOURCE_REAUTH,
     SOURCE_RECONFIGURE,
-    ConfigEntry,
     ConfigFlow,
     ConfigFlowResult,
 )
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import callback
+from homeassistant.helpers.selector import (
+    TextSelector,
+    TextSelectorConfig,
+    TextSelectorType,
+)
 from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
     PorscheCaptchaRequiredError,
@@ -32,14 +36,26 @@ from .const import (
     DOMAIN,
     TRANSIENT_AUTH_FIELDS,
 )
+from .coordinator import PorscheConnectConfigEntry
 
 if TYPE_CHECKING:
     import httpx2
 
 _LOGGER = logging.getLogger(__name__)
 
-STEP_USER_DATA_SCHEMA = vol.Schema({CONF_EMAIL: str, CONF_PASSWORD: str})
-CHANGE_PASSWORD_SCHEMA = vol.Schema({CONF_PASSWORD: str})
+_EMAIL_SELECTOR = TextSelector(
+    TextSelectorConfig(type=TextSelectorType.EMAIL, autocomplete="username")
+)
+_PASSWORD_SELECTOR = TextSelector(
+    TextSelectorConfig(type=TextSelectorType.PASSWORD, autocomplete="current-password")
+)
+STEP_USER_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_EMAIL): _EMAIL_SELECTOR,
+        vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR,
+    }
+)
+CHANGE_PASSWORD_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR})
 
 
 async def validate_input(
@@ -112,7 +128,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
         return self._client
 
     @callback
-    def _get_entry_for_current_flow(self) -> ConfigEntry | None:
+    def _get_entry_for_current_flow(self) -> PorscheConnectConfigEntry | None:
         """Return the existing entry for reauth/reconfigure flows."""
         if self.source == SOURCE_REAUTH:
             return self._get_reauth_entry()
@@ -122,13 +138,13 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
 
     @callback
     def _get_expected_unique_id(self) -> str | None:
-        """Return the account identifier for the current flow.
+        """Return the account of the entry being reauthenticated or reconfigured.
 
         Older entries may not have a unique_id yet, so fall back to the stored email.
         """
-        if entry := self._get_entry_for_current_flow():
-            return entry.unique_id or entry.data.get(CONF_EMAIL)
-        return self.unique_id
+        entry = self._get_entry_for_current_flow()
+        assert entry is not None  # noqa: S101 - only called from those two flows
+        return entry.unique_id or entry.data.get(CONF_EMAIL)
 
     @callback
     def _abort_if_account_mismatch(self) -> None:

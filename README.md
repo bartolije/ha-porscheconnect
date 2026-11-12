@@ -18,7 +18,7 @@
 **Your Porsche in Home Assistant, as a first-class device.** Range, fuel or
 battery, mileage, position, doors, windows, tires and service intervals as
 entities; lock, climatisation, charging, flash and honk as actions. Set up in
-the UI with your My Porsche account, in eight languages, for any car with an
+the UI with your My Porsche account, in seven languages, for any car with an
 active Porsche Connect subscription.
 
 ```text
@@ -48,9 +48,11 @@ with each rule and how it is met listed in
 [`quality_scale.yaml`](custom_components/porscheconnect/quality_scale.yaml):
 entities keyed by VIN that survive a rename, translated names, icons and error
 messages, reauthentication and reconfiguration flows, cars added to or removed
-from the account followed without a reload.
+from the account followed without a reload, a repair notice when a Porsche
+Connect contract lapses.
 
-**It is tested.** 112 tests and 97 % coverage with a 95 % floor, strict typing,
+**It is tested.** 126 tests, 99 % coverage with every module above 95 % and the
+setup flow at 100 %, strict typing,
 Hassfest and HACS validation on every pull request. The library underneath,
 [pyporscheconnectapi-bartolije](https://github.com/bartolije/pyporscheconnectapi),
 has 214 tests of its own on Python 3.12 to 3.15. Release 1.0 was also checked
@@ -464,7 +466,10 @@ will pass it on every unlock call.
 
 - The model is older than MY 2021 / doesn't ship Porsche Connect — confirm
   on <https://connect-store.porsche.com/>.
-- The Porsche Connect subscription has lapsed — renew it in My Porsche.
+- The Porsche Connect subscription has lapsed — renew it in My Porsche. Home
+  Assistant shows this under **Settings → Repairs**.
+- The car left the account. After two refreshes without it (about an hour),
+  its device and entities are removed; they are created again if it comes back.
 - The car was not paired in the PCM. Pair it, then reload the integration or
   wait for the next 32-minute tick.
 
@@ -495,16 +500,14 @@ diagnostics) is already redacted and is often enough.
 - **Porsche Car Connect is not supported.** That is a different service with
   a different backend; this integration targets *Porsche Connect* only.
 - **Cars must be paired in the PCM.** Un-paired cars expose empty
-  `commands` / `measurements` payloads, so no entities are created.
+  `commands` / `measurements` payloads, so most entities are not created.
 - **Captcha may be required at first login.** Handled by the config flow but
   occasionally loops if Porsche flags the IP.
 - **2FA / TOTP is not supported by the underlying library.** If you have
   enabled 2FA on the Porsche ID, login will fail.
-- **Charging-profile target SoC has a known bug
-  ([upstream issue #319](https://github.com/CJNE/ha-porscheconnect/issues/319)).** The
-  `number.target_soc` entity writes to the active profile, but Porsche may
-  silently revert the value on certain MYs / firmware combinations. Track
-  upstream for the fix.
+- **Porsche may not keep a target state of charge.** The `number.target_soc`
+  entity writes to the active charging profile; on some model years and
+  firmware versions Porsche reverts the value on its side.
 - **No push updates.** The integration polls every 32 minutes by default; for
   near-real-time data, use the *Get current vehicle information* button.
 

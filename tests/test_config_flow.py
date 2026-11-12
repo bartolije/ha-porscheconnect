@@ -566,5 +566,5 @@ def test_translations_are_complete_and_used_keys_exist() -> None:
     used = set(re.findall(r'translation_key="(\w+)"', source))
     known = set(strings["exceptions"]) | {
         key for platform in strings["entity"].values() for key in platform
-    } | {"location"}
+    } | set(strings["issues"]) | {"location"}
     assert used <= known, used - known

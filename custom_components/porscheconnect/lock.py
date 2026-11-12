@@ -8,7 +8,7 @@ from typing import Any
 from homeassistant.components.lock import CONF_DEFAULT_CODE, LockEntity
 from homeassistant.components.lock import DOMAIN as LOCK_DOMAIN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -34,15 +34,15 @@ async def async_setup_entry(
     """Set up the Porsche Connect lock entity from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    known_vins: set[str] = set()
+    known_vins: dict[str, object] = {}
 
     @callback
     def _async_add_entities() -> None:
         new_entities: list[PorscheLock] = []
         for vehicle in coordinator.vehicles:
-            if vehicle.vin in known_vins:
+            if known_vins.get(vehicle.vin) is vehicle:
                 continue
-            known_vins.add(vehicle.vin)
+            known_vins[vehicle.vin] = vehicle
             new_entities.append(PorscheLock(coordinator, vehicle))
         if new_entities:
             async_add_entities(new_entities)
@@ -110,7 +110,7 @@ class PorscheLock(PorscheBaseEntity, LockEntity):
             finally:
                 self.coordinator.async_update_listeners()
         else:
-            raise HomeAssistantError(
+            raise ServiceValidationError(
                 translation_domain=DOMAIN,
                 translation_key="pin_code_missing",
             )

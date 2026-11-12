@@ -61,15 +61,15 @@ async def async_setup_entry(
     """Set up the Porsche buttons from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    known_vins: set[str] = set()
+    known_vins: dict[str, object] = {}
 
     @callback
     def _async_add_entities() -> None:
         new_entities: list[PorscheButton] = []
         for vehicle in coordinator.vehicles:
-            if vehicle.vin in known_vins:
+            if known_vins.get(vehicle.vin) is vehicle:
                 continue
-            known_vins.add(vehicle.vin)
+            known_vins[vehicle.vin] = vehicle
             new_entities.extend(
                 PorscheButton(coordinator, vehicle, description)
                 for description in BUTTON_TYPES

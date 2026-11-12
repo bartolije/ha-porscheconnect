@@ -339,6 +339,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="monthly_electric_consumption",
         measurement_node=_MONTHLY,
         measurement_leaf="avgKwhPerHundredKm",
+        device_class=SensorDeviceClass.ENERGY_DISTANCE,
         native_unit_of_measurement="kWh/100km",
         state_class=SensorStateClass.MEASUREMENT,
         suggested_display_precision=1,
@@ -450,15 +451,15 @@ async def async_setup_entry(
     """Set up the sensors from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
 
-    known_vins: set[str] = set()
+    known_vins: dict[str, object] = {}
 
     @callback
     def _async_add_entities() -> None:
         new_entities: list[PorscheSensor] = []
         for vehicle in coordinator.vehicles:
-            if vehicle.vin in known_vins:
+            if known_vins.get(vehicle.vin) is vehicle:
                 continue
-            known_vins.add(vehicle.vin)
+            known_vins[vehicle.vin] = vehicle
             new_entities.extend(
                 PorscheSensor(coordinator, vehicle, description)
                 for description in SENSOR_TYPES
