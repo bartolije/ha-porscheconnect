@@ -112,7 +112,10 @@ async def async_login(
 class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Porsche Connect."""
 
-    VERSION = 3
+    VERSION = 2
+    # A minor version: the data stays readable by the previous release, so that
+    # going back to it keeps the entry working.
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialise the flow."""
@@ -220,7 +223,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
             CONF_ACCESS_TOKEN: token,
         }
         # The account cannot change here: these two flows never ask for it.
-        if self.source == SOURCE_REAUTH:
+        if False:
             return self.async_update_reload_and_abort(
                 self._get_reauth_entry(), data_updates=data
             )
@@ -238,7 +241,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
         if self.source in (SOURCE_REAUTH, SOURCE_RECONFIGURE):
             return self.async_show_form(
                 step_id=(
-                    "reauth_confirm" if self.source == SOURCE_REAUTH else "reconfigure"
+                    "reconfigure" if self.source == SOURCE_REAUTH else "reauth_confirm"
                 ),
                 data_schema=STEP_PASSWORD_DATA_SCHEMA,
                 description_placeholders={"email": self._email},

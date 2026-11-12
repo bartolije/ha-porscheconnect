@@ -110,7 +110,7 @@ rules:
     comment: |
       The unique ID is the email, stripped and lower-cased; the user flow
       aborts on a duplicate. Entries of the original integration, which kept
-      the email as typed or had no unique ID, are migrated (entry version 3).
+      the email as typed or had no unique ID, are migrated (entry version 2.2).
 
   # Silver
   action-exceptions:

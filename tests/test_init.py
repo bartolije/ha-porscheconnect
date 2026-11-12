@@ -293,7 +293,7 @@ async def test_migrate_entry_drops_transient_auth_fields(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.version == 3
+    assert (entry.version, entry.minor_version) == (2, 2)
     assert TRANSIENT_AUTH_FIELDS.isdisjoint(entry.data)
     assert entry.data[CONF_ACCESS_TOKEN] == {"access_token": "abc123", "expires_in": 3600}
 
@@ -365,7 +365,7 @@ async def test_migrate_entry_makes_the_lower_cased_email_the_unique_id(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.version == 3
+    assert (entry.version, entry.minor_version) == (2, 2)
     assert entry.unique_id == "tester@example.com"
     assert entry.data[CONF_EMAIL] == "tester@example.com"
     # The polling interval is not a setting: a left-over one is dropped.
@@ -404,7 +404,7 @@ async def test_migrate_entry_keeps_a_unique_id_that_is_already_taken(
     await hass.config_entries.async_setup(duplicate.entry_id)
     await hass.async_block_till_done()
 
-    assert duplicate.version == 3
+    assert (duplicate.version, duplicate.minor_version) == (2, 2)
     assert duplicate.unique_id == "Tester@Example.com"
     assert mock_config_entry.unique_id == "tester@example.com"
 
