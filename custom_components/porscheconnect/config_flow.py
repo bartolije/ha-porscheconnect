@@ -60,8 +60,7 @@ async def validate_input(
             # come back with the captcha code, or the resume is rejected.
             code_verifier=data.get(CONF_CODE_VERIFIER),
             token=token,
-            # httpx2 is Home Assistant's httpx; the library is annotated for httpx.
-            async_client=client,  # type: ignore[arg-type]
+            async_client=client,
         )
     except PorscheExceptionError as exc:
         _LOGGER.debug("Could not create connection: %s", exc)
@@ -135,7 +134,11 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     def _abort_if_account_mismatch(self) -> None:
         """Abort if reauth/reconfigure targets a different account."""
         expected_unique_id = self._get_expected_unique_id()
-        if expected_unique_id is None or self.unique_id == expected_unique_id:
+        # Entries created by the original integration keep the email as typed.
+        if (
+            expected_unique_id is None
+            or self.unique_id == expected_unique_id.strip().lower()
+        ):
             return
         self._abort_if_unique_id_mismatch()
 

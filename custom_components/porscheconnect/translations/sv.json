@@ -24,6 +24,13 @@
         "data": {
           "captcha_code": "Captcha-kod"
         }
+      },
+      "change_password": {
+        "title": "Ändra lösenordet",
+        "description": "Ange det nya lösenordet för Porsche-kontot {email}.",
+        "data": {
+          "password": "Lösenord"
+        }
       }
     }
   },

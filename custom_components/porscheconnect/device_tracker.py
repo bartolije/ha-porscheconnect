@@ -66,14 +66,8 @@ class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
         super().__init__(coordinator, vehicle)
 
         self._attr_unique_id = self._vin
-        if (
-            "customName" in vehicle.data
-            and vehicle.data["customName"] != vehicle.model_name
-            and vehicle.data["customName"] is not None
-        ):
-            self._attr_name = vehicle.data["customName"]
-        else:
-            self._attr_name = None
+        # The device is already named after the car: a name here would double it.
+        self._attr_name = None
         self._attr_icon = "mdi:crosshairs-gps"
 
     @property

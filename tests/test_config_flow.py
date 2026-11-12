@@ -499,3 +499,47 @@ async def test_user_step_reports_other_login_failures(
 
     assert result["type"] == FlowResultType.FORM
     assert result["errors"] == {"base": error}
+
+
+async def test_reauth_of_an_entry_with_capitals_in_its_unique_id(
+    hass: HomeAssistant,
+) -> None:
+    """Entries made by the original integration keep the email as typed."""
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="Tester@Example.com",
+        data={CONF_EMAIL: "Tester@Example.com", CONF_PASSWORD: "old-password"},
+    )
+    entry.add_to_hass(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_REAUTH, "entry_id": entry.entry_id},
+        data=dict(entry.data),
+    )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: "Tester@Example.com", CONF_PASSWORD: "new"},
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "reauth_successful"
+    assert entry.data[CONF_PASSWORD] == "new"
+
+
+def test_every_flow_step_is_translated() -> None:
+    """A step without strings shows an empty form."""
+    import json
+    import re
+    from pathlib import Path
+
+    component = Path(__file__).parent.parent / "custom_components/porscheconnect"
+    steps = set(re.findall(r'step_id="(\w+)"', (component / "config_flow.py").read_text()))
+    assert "change_password" in steps
+    for strings in (component / "strings.json", *component.glob("translations/*.json")):
+        translated = json.loads(strings.read_text())["config"]["step"]
+        assert steps <= set(translated), strings.name

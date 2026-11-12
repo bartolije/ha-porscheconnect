@@ -33,6 +33,7 @@ from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
     PorscheCaptchaRequiredError,
     PorscheExceptionError,
+    PorscheLoginThrottledError,
     PorscheWrongCredentialsError,
 )
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -226,8 +227,7 @@ async def async_setup_entry(
     connection = Connection(
         entry.data.get("email"),
         entry.data.get("password"),
-        # httpx2 is Home Assistant's httpx; the library is annotated for httpx.
-        async_client=_async_get_entry_client(hass, entry.entry_id),  # type: ignore[arg-type]
+        async_client=_async_get_entry_client(hass, entry.entry_id),
         token=entry.data.get(CONF_ACCESS_TOKEN, None),
     )
 
@@ -355,6 +355,10 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     if self._picture_retry_due(vehicle):
                         await self._async_fetch_pictures(vehicle)
 
+        except PorscheLoginThrottledError as exc:
+            # Too many logins: the password is fine, try again at the next refresh.
+            msg = f"Porsche is throttling logins: {exc}"
+            raise UpdateFailed(msg) from exc
         except PorscheWrongCredentialsError as exc:
             msg = f"{_AUTH_FAILED_MSG}: {exc}"
             raise ConfigEntryAuthFailed(msg) from exc

@@ -334,3 +334,24 @@ async def test_status_without_name_and_failed_pictures_do_not_break_setup(
             platform, DOMAIN, f"{mock_vehicle.vin}-{key}"
         )
         assert hass.states.get(entity_id) is not None
+
+
+async def test_throttled_login_is_retried_not_reauthenticated(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """Porsche throttling logins says nothing about the password."""
+    from pyporscheconnectapi.exceptions import PorscheLoginThrottledError
+
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    mock_vehicle.get_stored_overview = AsyncMock(
+        side_effect=PorscheLoginThrottledError("too many attempts"),
+    )
+
+    with pytest.raises(UpdateFailed):
+        await mock_config_entry.runtime_data._async_update_data()
