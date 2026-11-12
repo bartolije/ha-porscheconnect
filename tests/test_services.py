@@ -162,3 +162,19 @@ async def test_climatisation_services_report_failures(
     with pytest.raises(ServiceValidationError) as excinfo:
         await call(device.id)
     assert excinfo.value.translation_key == "no_config_entry_for_device"
+
+
+@pytest.mark.parametrize("temperature", [14.5, 31])
+def test_climatisation_start_refuses_a_temperature_the_car_cannot_reach(
+    temperature: float,
+) -> None:
+    """Same range as the climate entity: 15 to 30 °C."""
+    import voluptuous as vol
+
+    from custom_components.porscheconnect.services import (
+        SERVICE_CLIMATISATION_START_SCHEMA,
+    )
+
+    with pytest.raises(vol.Invalid):
+        SERVICE_CLIMATISATION_START_SCHEMA({"vehicle": "x", "temperature": temperature})
+    assert SERVICE_CLIMATISATION_START_SCHEMA({"vehicle": "x", "temperature": 30})

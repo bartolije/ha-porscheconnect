@@ -44,7 +44,7 @@ body:
       label: Debug logs
       description: >-
         Add the configuration below to configuration.yaml, restart, reproduce the problem and
-        paste the lines around the error. Remove your email address and any token.
+        paste the lines around the error. Remove your email address, your VIN and the position of the car.
         ```yaml
         logger:
           logs:

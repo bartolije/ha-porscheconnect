@@ -17,12 +17,12 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from . import (
-    PorscheBaseEntity,
+from .coordinator import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
     has_measurement,
 )
+from .entity import PorscheBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
 

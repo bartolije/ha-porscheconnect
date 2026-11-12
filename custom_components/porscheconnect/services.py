@@ -82,7 +82,9 @@ SERVICE_VEHICLE_SCHEMA = vol.Schema(
 
 SERVICE_CLIMATISATION_START_SCHEMA = SERVICE_VEHICLE_SCHEMA.extend(
     {
-        vol.Optional(ATTR_TEMPERATURE): cv.positive_float,
+        vol.Optional(ATTR_TEMPERATURE): vol.All(
+            vol.Coerce(float), vol.Range(min=15, max=30)
+        ),
         vol.Optional(ATTR_FRONT_LEFT): cv.boolean,
         vol.Optional(ATTR_FRONT_RIGHT): cv.boolean,
         vol.Optional(ATTR_REAR_LEFT): cv.boolean,

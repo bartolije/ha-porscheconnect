@@ -13,16 +13,17 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from . import (
-    PorscheBaseEntity,
+from .const import DOMAIN
+from .coordinator import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
-from .const import DOMAIN
+from .entity import PorscheBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-PARALLEL_UPDATES = 0
+# One command at a time: the car handles them in sequence.
+PARALLEL_UPDATES = 1
 
 
 async def async_setup_entry(
