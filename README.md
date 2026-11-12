@@ -3,138 +3,141 @@
 [![GitHub Release][releases-shield]][releases]
 [![CI][ci-shield]][ci]
 [![Home Assistant][ha-shield]][hacs-repo]
-[![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
 
-[![pre-commit][pre-commit-shield]][pre-commit]
-[![Ruff][ruff-shield]][ruff]
+**Your Porsche, at home in Home Assistant.**
 
-[![hacs][hacs_badge]][hacs]
-[![Project Maintenance][maintenance-shield]][user_profile]
+See your car on your dashboard, next to your lights and your heating. Know at a
+glance whether it is locked, how far it can go and where it is parked. Warm the
+cabin before you leave, get a message when a door was left open, and let your
+home react when the car comes back.
 
-[![Discord][discord-shield]][discord]
-[![Community Forum][forum-shield]][forum]
+Sign in with your My Porsche account and your car appears. Nothing to wire,
+nothing to configure by hand. Available in seven languages.
 
-**Your Porsche in Home Assistant, as a first-class device.** Range, fuel or
-battery, mileage, position, doors, windows, tires and service intervals as
-entities; lock, climatisation, charging, flash and honk as actions. Set up in
-the UI with your My Porsche account, in seven languages, for any car with an
-active Porsche Connect subscription.
+[![Open this repository in HACS][hacs-repo-badge]][hacs-repo]
 
-```text
-Settings → Devices & services → Add integration → My Porsche Connect
-```
+## What you can do
 
-## Why this integration
+- **Check on your car without opening the app.** Range, fuel or battery level,
+  mileage, tire pressures, next service: all on your dashboard.
+- **Never wonder if you locked it.** See the lock, every door, window and lid,
+  and lock or unlock from Home Assistant.
+- **Leave in a warm car.** On electric and plug-in hybrid models, start the
+  climatisation from an automation: every cold weekday morning, or when your
+  alarm goes off.
+- **Be told, not surprised.** A notification when a door stays open, when
+  charging is finished, or when a service is due.
+- **Let the house follow the car.** Open the garage and switch on the lights
+  when it arrives home.
+- **Charge your way.** Set the charge target, start direct charging, follow the
+  charging power and the time it ends.
 
-**It keeps working.** Porsche changes its login and its API without notice.
-A daily job checks that Porsche still accepts the login this integration uses,
-and a weekly one runs the tests on the newest Home Assistant, so a break is
-known before you meet it. When Porsche asks for a captcha or a new password,
-Home Assistant asks you once, in the UI, instead of retrying forever.
+## Built to be trusted with your car
 
-**It is careful with your car.** A lock, unlock or climatisation command is
-sent once: if Porsche answers slowly, it is never replayed behind your back.
-Commands go one at a time. The lock shows *unknown*, not *unlocked*, when the
-car does not report its state.
+- **Careful with your car.** A lock, unlock or climatisation command is sent
+  once, and one at a time. If Porsche answers slowly, nothing is replayed
+  behind your back.
+- **Careful with your data.** Your password, your PIN and the position of your
+  car never appear in logs or in the diagnostics you may share.
+- **It keeps working.** Porsche changes its login without notice. Automatic
+  checks run every day to catch it before you do, and when Porsche wants a
+  captcha or a new password, Home Assistant simply asks you.
+- **Built to Home Assistant's highest standards.** The integration follows the
+  official [quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+  rule by rule ([how each rule is met](custom_components/porscheconnect/quality_scale.yaml)),
+  with 126 automated tests, and it is checked on a real car.
 
-**It is careful with your data.** Diagnostics leave out the password, tokens,
-position and pairing codes, and mask the VIN and email. The unlock PIN is never
-logged, nor anything it could be recovered from.
+## Supported cars
 
-**It follows the Home Assistant rules.** Built against the
-[integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/),
-with each rule and how it is met listed in
-[`quality_scale.yaml`](custom_components/porscheconnect/quality_scale.yaml):
-entities keyed by VIN that survive a rename, translated names, icons and error
-messages, reauthentication and reconfiguration flows, cars added to or removed
-from the account followed without a reload, a repair notice when a Porsche
-Connect contract lapses.
+Any Porsche with an active **Porsche Connect** subscription, paired with your
+My Porsche account. In practice, cars from model year 2021 on.
 
-**It is tested.** 126 tests, 99 % coverage with every module above 95 % and the
-setup flow at 100 %, strict typing,
-Hassfest and HACS validation on every pull request. The library underneath,
-[pyporscheconnectapi-bartolije](https://github.com/bartolije/pyporscheconnectapi),
-has 214 tests of its own on Python 3.12 to 3.15. Release 1.0 was also checked
-on a real 718: login, captcha and every read.
+| Model              | Type                     | Status, doors, lock, position | Charging and climatisation |
+| ------------------ | ------------------------ | ----------------------------- | -------------------------- |
+| Taycan             | Electric                 | Yes                           | Yes                        |
+| Macan Electric     | Electric                 | Yes                           | Yes                        |
+| Cayenne (E3)       | Plug-in hybrid or petrol | Yes                           | Plug-in hybrid only        |
+| Panamera (G2 PA)   | Plug-in hybrid or petrol | Yes                           | Plug-in hybrid only        |
+| 911 (992)          | Petrol                   | Yes                           | No                         |
+| 718 Boxster/Cayman | Petrol                   | Yes                           | No                         |
 
-**Switching is safe.** Coming from the original integration, your entities keep
-their entity IDs and history.
+Not sure about your car? Select it on <https://connect-store.porsche.com/> and
+check that the *Porsche Connect* package is offered.
 
-> This integration does **not** support *Porsche Car Connect* — that is a
-> separate, older Porsche service with its own backend.
+The older *Porsche Car Connect* service is a different system and is not
+supported.
 
-## About this fork
+## Installation
 
-This repository is a fork of
-[CJNE/ha-porscheconnect](https://github.com/CJNE/ha-porscheconnect), the
-Porsche Connect integration by [Johan Isacsson](https://github.com/CJNE) and
-its contributors, maintained by [bartolije](https://github.com/bartolije). It
-uses a fork of the library as well:
-[pyporscheconnectapi-bartolije](https://pypi.org/project/pyporscheconnectapi-bartolije/)
-([bartolije/pyporscheconnectapi](https://github.com/bartolije/pyporscheconnectapi),
-forked from [CJNE/pyporscheconnectapi](https://github.com/CJNE/pyporscheconnectapi)).
+You need Home Assistant 2026.11 or newer and [HACS](https://hacs.xyz).
 
-Both integrations use the same `porscheconnect` domain, so only one of them can
-be installed at a time. What this fork adds:
+1. Click the **Open in HACS** button above, or in HACS open **⋮ → Custom
+   repositories** and add `https://github.com/bartolije/ha-porscheconnect` as an
+   **Integration**.
+2. Search for **My Porsche Connect**, click **Download**, then restart Home
+   Assistant.
+3. Go to **Settings → Devices & services → Add integration**, search
+   **My Porsche Connect** and sign in.
 
-- support for the current Home Assistant releases (2026.11 and newer);
-- a `climate` entity, one binary sensor per door, window and lid, and a pressure
-  deviation sensor per tire;
-- a reauthentication prompt when Porsche asks for a captcha, instead of endless
-  retries;
-- diagnostics with the position, pairing codes and key data redacted;
-- when switching from the upstream integration, the existing entities are kept
-  with their entity IDs and history.
+The **Porsche Connect** entry of the default HACS store is the original
+integration. Both use the same folder, so keep only one. If you switch from it,
+your entities keep their names and history.
 
-Fixes that also apply upstream are sent back as pull requests.
+<details>
+<summary>Manual installation</summary>
 
-## Features
+Copy the `custom_components/porscheconnect/` folder of this repository into the
+`custom_components/` folder next to your `configuration.yaml`, restart Home
+Assistant, then add the integration as in step 3.
 
-- Battery, charging, range, mileage, fuel level sensors
-- Doors/lids, parking brake/light, privacy mode, remote access binary sensors
-- Tire pressure status (per-tire attributes) when the vehicle has TPMS
-- Vehicle location via `device_tracker` (suppressed when privacy mode is on)
-- Vehicle images (front, side, rear, rear-top, top views)
-- Door `lock` entity (unlock requires the S-PIN configured per-entity)
-- `climate` entity: remote climatisation with a target temperature
-- Remote `switch` entities: direct charging, and climatisation (disabled by default:
-  the `climate` entity sends the same command)
-- `number` entity: target state of charge
-- `button` entities: flash indicators, honk-and-flash, refresh overview
-- `climatisation_start` service action with seat-heating zone selection
-- Multi-vehicle accounts are auto-discovered and added at runtime
-- Captcha, reauth and reconfigure flows handled in the UI
+</details>
 
-## Supported vehicles
+## Configuration
 
-The list below tracks what the upstream `pyporscheconnectapi` library can talk
-to. In practice, **only Porsche Connect–equipped vehicles (typically MY 2021+)
-report data** — older cars may authenticate against the account but expose
-empty `commands` / `measurements` payloads.
+Everything is set up in the Home Assistant UI.
 
-| Model              | Drivetrain | Connect entities | Charging entities | Climatisation | Lock | Location |
-| ------------------ | ---------- | ---------------- | ----------------- | ------------- | ---- | -------- |
-| Taycan             | BEV        | Yes              | Yes               | Yes           | Yes  | Yes      |
-| Macan EV           | BEV        | Yes              | Yes               | Yes           | Yes  | Yes      |
-| Cayenne (E3)       | PHEV / ICE | Yes              | PHEV only         | PHEV only     | Yes  | Yes      |
-| Panamera (G2 PA)   | PHEV / ICE | Yes              | PHEV only         | PHEV only     | Yes  | Yes      |
-| 911 (992)          | ICE        | Yes              | No                | No            | Yes  | Yes      |
-| 718 Boxster/Cayman | ICE        | Yes              | No                | No            | Yes  | Yes      |
+| Field    | Required      | Notes                                                             |
+| -------- | ------------- | ----------------------------------------------------------------- |
+| Email    | Yes           | The email of your My Porsche account.                             |
+| Password | Yes           | The password of your My Porsche account.                          |
+| Captcha  | When prompted | Porsche sometimes shows a picture to copy when you first sign in. |
 
-ICE-only cars naturally do not expose state-of-charge, charging or
-electric-range entities. PHEVs expose both fuel-level and battery sensors.
+Before you start, the car needs an active Porsche Connect subscription and must
+be paired in its PCM with the pairing code shown in the My Porsche app.
 
-To verify your specific model and equipment, see
-<https://connect-store.porsche.com/> — select your car and check whether the
-*Porsche Connect* services package is available.
+**Unlocking** needs the 4-digit security PIN you chose in the Porsche app. Enter
+it once as the *default code* in the options of the lock entity. Locking does
+not need it.
 
-## Supported entities and capabilities
+**Changed your password?** Open **Settings → Devices & services → My Porsche
+Connect → ⋮ → Reconfigure**. If Porsche ends your session, Home Assistant asks
+you to sign in again by itself.
 
-Each entity is gated on a capability flag or on a measurement the car reports,
-so the integration only creates entities the car can actually feed. The gates
-are read when the vehicle is first seen: if the car starts reporting a new
-measurement later, reload the integration to get its entity.
+There are no other settings.
+
+## What you get
+
+Your car appears as one device. Home Assistant only creates what your car
+actually reports, so a petrol car has no charging entities.
+
+| For                | Entities                                                                                         |
+| ------------------ | ------------------------------------------------------------------------------------------------ |
+| Range and energy   | Range, fuel level, battery level, electric range, mileage                                        |
+| Charging           | Status, power, end time, charge target, direct charging                                          |
+| Doors and security | Lock, each door, window and lid, sunroof, convertible top, parking brake and lights              |
+| Comfort            | Climatisation with a target temperature                                                          |
+| Position           | The car on your map (not created while privacy mode is on in the car)                            |
+| Tires and service  | Tire pressure status and deviation per tire, next service, oil change, dashboard alerts          |
+| Trips              | Distance, driving time, trips and consumption of the month                                       |
+| Pictures           | Five views of your own car, in its colour                                                        |
+| Buttons            | Flash the indicators, honk and flash, ask the car for fresh data                                 |
+
+Some entities are disabled by default to keep the device page readable. Enable
+them from the device page if you want them.
+
+<details>
+<summary>Full list of entities and when each one is created</summary>
 
 | Platform        | Entity / key                                                       | Capability gate                                          |
 | --------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
@@ -180,116 +183,29 @@ measurement later, reload the integration to get its entity.
 | `button`        | `honk_and_flash_indicators`                                        | `has_remote_services`                                    |
 | `button`        | `get_current_overview`                                             | `has_remote_services` (forces a fresh pull from the car) |
 
-¹ Built from the data models of the My Porsche app (21.26.44), not yet seen on a
-car: a 718 reports them as not supported. If your car shows one of them, please
-check the value against the app and open an issue with the diagnostics attached
-(device page, ⋮ menu, "Download diagnostics"), whether it is right or wrong.
+¹ Built from the data of the My Porsche app and not yet seen on a car. If your
+car shows one of them, please compare it with the app and open an issue with the
+diagnostics attached (device page → ⋮ → Download diagnostics).
 
-The privacy mode flag is honoured by the vehicle itself — when the driver
-enables privacy in the PCM, the `device_tracker` entity is not created; it is
-added on the next refresh once privacy mode is turned off.
+Entities are created from what the car reports when it is first seen. If your
+car starts reporting something new later, reload the integration.
 
-## Installation
+</details>
 
-The integration is delivered as a [HACS](https://hacs.xyz) custom integration.
-It requires Home Assistant 2026.11 or newer.
-
-### HACS (recommended)
-
-[![Open this repository in HACS][hacs-repo-badge]][hacs-repo]
-
-1. Click the button above, or in HACS open **⋮ → Custom repositories** and add
-   `https://github.com/bartolije/ha-porscheconnect` with the type
-   **Integration**. (The **Porsche Connect** entry of the default HACS store is
-   the upstream integration; both install into `custom_components/porscheconnect`,
-   so keep only one of them.)
-2. Search for **My Porsche Connect** and select the one from this repository.
-3. Click **Download**, then **Restart Home Assistant**.
-4. Go to **Settings → Devices & services → Add integration**, search
-   **My Porsche Connect**, and follow the configuration flow.
-
-### Manual
-
-1. Open the directory containing your `configuration.yaml`.
-2. Create `custom_components/` if it does not exist.
-3. Inside it, create `custom_components/porscheconnect/`.
-4. Copy every file from `custom_components/porscheconnect/` in this repo into
-   that folder.
-5. Restart Home Assistant.
-6. Go to **Settings → Devices & services → Add integration**, search
-   **My Porsche Connect**, and follow the configuration flow.
-
-## Configuration
-
-The integration is configured exclusively through the Home Assistant UI.
-There is **no YAML configuration** and **no options flow** — no additional
-configuration parameters beyond the credentials below.
-
-### Installation parameters (credentials)
-
-| Field      | Required      | Notes                                                            |
-| ---------- | ------------- | ---------------------------------------------------------------- |
-| Email      | Yes           | Your Porsche ID email (same one you use for the Porsche app).    |
-| Password   | Yes           | Your Porsche ID password.                                        |
-| Captcha    | When prompted | If Porsche's login server demands a captcha, the flow shows a step with the SVG image and an input field. |
-
-You must also have:
-
-- An **active Porsche Connect subscription** on the car you want to control.
-- The car **paired in the PCM** (Porsche Communication Management) using the
-  pairing code shown by My Porsche / the Porsche app. Un-paired cars
-  authenticate but return empty `commands` / `measurements` payloads.
-
-The **S-PIN** (4-digit security PIN you set in the Porsche app) is not asked
-at install time. It is provided per-`lock` entity as the standard Home
-Assistant lock *default code* in the entity options, and is only needed for
-*unlock*. Lock and other remote services do not require it.
-
-### Reauth and reconfigure
-
-- **Reauth** is triggered automatically when the API returns 401 / wrong
-  credentials, or when Porsche asks for a captcha. Home Assistant shows a repair
-  notification leading back to the login form.
-- **Reconfigure** lets you update the password for an existing entry without
-  removing and re-adding it (Settings → Devices & services → My Porsche Connect
-  → ⋮ on the entry → Reconfigure).
-
-## Services / Actions
+## Actions
 
 ### `porscheconnect.climatisation_start`
 
-Starts remote climatisation of the passenger compartment with an optional
-target temperature and per-seat heating selection.
+Starts the climatisation, with an optional temperature and seat heating.
 
-#### Parameters
-
-| Name          | Type     | Required | Default | Notes                                                              |
-| ------------- | -------- | -------- | ------- | ------------------------------------------------------------------ |
-| `vehicle`     | device   | yes      | —       | The Porsche Connect device the action targets.                     |
-| `temperature` | number   | no       | 20 °C   | Target cabin temperature; 15 to 30 °C, 0.5 °C step.            |
-| `front_left`  | boolean  | no       | false   | Activate front-left seat heating if the car has that zone.         |
-| `front_right` | boolean  | no       | false   | Activate front-right seat heating if the car has that zone.        |
-| `rear_left`   | boolean  | no       | false   | Activate rear-left seat heating if the car has that zone.          |
-| `rear_right`  | boolean  | no       | false   | Activate rear-right seat heating if the car has that zone.         |
-
-#### Behavior on unsupported zones
-
-The Porsche API only lists zones the car physically supports in
-`HVAC_SUMMARY.climateZonesEnabled`
-([upstream issue #292](https://github.com/CJNE/ha-porscheconnect/issues/292)).
-Two cases:
-
-- If you set an unsupported zone to **`false`**, the parameter is silently
-  dropped — calling "off" on a zone the car doesn't have is harmless.
-- If you set an unsupported zone to **`true`**, the service raises
-  `ServiceValidationError` so the misconfiguration surfaces in your automation
-  rather than silently doing nothing.
-
-If the car does not advertise `has_remote_climatisation` at all (e.g. an ICE
-911), the service raises `ServiceValidationError` before any API call is
-issued.
-
-#### Example call
+| Name          | Required | Default | Notes                                           |
+| ------------- | -------- | ------- | ----------------------------------------------- |
+| `vehicle`     | yes      |         | The Porsche device.                             |
+| `temperature` | no       | 20 °C   | 15 to 30 °C, in steps of 0.5.                   |
+| `front_left`  | no       | false   | Heat the front left seat, if the car has it.    |
+| `front_right` | no       | false   | Heat the front right seat, if the car has it.   |
+| `rear_left`   | no       | false   | Heat the rear left seat, if the car has it.     |
+| `rear_right`  | no       | false   | Heat the rear right seat, if the car has it.    |
 
 ```yaml
 action: porscheconnect.climatisation_start
@@ -297,14 +213,14 @@ data:
   vehicle: 1a2b3c4d5e6f7890abcdef1234567890   # device id of the Porsche
   temperature: 21
   front_left: true
-  front_right: true
 ```
+
+Asking for a seat the car does not have, or for a car without remote
+climatisation, fails with a clear error instead of doing nothing.
 
 ### `porscheconnect.climatisation_stop`
 
-Stops remote climatisation. Its only parameter is `vehicle`, the device to
-target. It raises the same errors as `climatisation_start` for an unknown device
-or a car without remote climatisation.
+Stops the climatisation. Its only parameter is `vehicle`.
 
 ```yaml
 action: porscheconnect.climatisation_stop
@@ -313,6 +229,12 @@ data:
 ```
 
 ## Examples
+
+A dashboard card and four automations: a warm cabin on cold mornings, a warning
+when a door stays open, a charging log and a message when the car gets home. Replace `taycan` with the name of your car.
+
+<details>
+<summary>Show the examples</summary>
 
 ### Lovelace dashboard snippet
 
@@ -403,140 +325,87 @@ actions:
 mode: single
 ```
 
-## Polling and data updates
+</details>
 
-The integration is **cloud-polling** (`iot_class: cloud_polling`) — there is no
-push channel from Porsche to Home Assistant.
+## How data is updated
 
-- **Default poll interval:** every **1920 seconds (32 minutes)** via
-  `DataUpdateCoordinator`. The interval is deliberately conservative to stay
-  well within Porsche's backend rate limits; multi-vehicle accounts share the
-  same tick.
-- **What each tick fetches:** the account's vehicle list, then for every
-  vehicle the stored overview (`get_stored_overview`) — i.e. the measurements
-  and capability payload cached server-side by Porsche. A car added to the
-  account gets its entities on the next tick; a car removed from it turns
-  unavailable and its device can then be deleted.
-- **Pictures:** the picture locations (used by the `image` platform) are
-  fetched on setup, then once a day for as long as Porsche returns none.
-- **Extra refreshes are triggered by:**
-  - Pressing the **Get current vehicle information** button, which forces a
-    fresh pull from the car instead of returning the cached overview.
-  - Any remote action (climatisation switch, target SoC change, lock/unlock,
-    flash, honk) — after the API call the coordinator notifies listeners so
-    entities re-read state.
-  - The reauth flow re-running setup after a token refresh.
+Home Assistant asks Porsche for the state of your car **every 32 minutes**.
+Porsche limits how often it can be asked, so there is no setting to go faster.
 
-The default 32-minute cadence balances "responsive enough for ambient
-dashboards" against "doesn't aggressively wake the car or burn through API
-quota". There is no setting to change it; an interval set in the options of the
-upstream integration before switching to this fork is kept.
+- Need it now? Press **Get current vehicle information** on the device page: it
+  asks the car itself for fresh data.
+- After a command (lock, climatisation, charging), the entities are refreshed
+  right away.
+- A car added to your account appears at the next update. A car that left it is
+  removed after two updates without it, about an hour.
+- Pictures are fetched once, when the integration starts.
 
 ## Troubleshooting
 
-### Captcha screen during install
+**A captcha is asked at sign-in.** Copy the characters and submit. If it comes
+back, start again: each picture can be used once.
 
-Porsche occasionally requires a captcha for a fresh login. The config flow
-detects this and renders the SVG image inline in a `captcha` step; type the
-characters you see and submit. If it loops, retry from scratch — the captcha
-is single-use and time-limited.
+**The car is there but most entities are missing.** The car is probably not
+paired in its PCM. Pair it with the code shown in the My Porsche app, then
+reload the integration.
 
-### Empty `commands` / `measurements` — `connect: false`
+**The car is missing.** Check that the model has Porsche Connect and that the
+subscription is active: Home Assistant shows a lapsed subscription under
+**Settings → Repairs**. A car that left your account is removed after about an
+hour and comes back if you add it again.
 
-If the integration loads but no sensors populate, the car is most likely not
-paired in the PCM. Pair the car in My Porsche / the Porsche app using the
-displayed pairing code, then reload the integration (Settings → Devices &
-services → My Porsche Connect → ⋮ → Reload): entities are created from what the
-car reports when it is first seen.
+**Home Assistant asks me to sign in again.** Porsche ended the session. Enter
+your password, and the captcha if one is shown.
 
-### Reauth requested out of the blue
+**Lock works, unlock does not.** Set your 4-digit security PIN as the *default
+code* in the options of the lock entity.
 
-Porsche tokens expire periodically. Any 401 from the API (or a
-`PorscheWrongCredentialsError`) is converted to `ConfigEntryAuthFailed`, which
-HA surfaces as a repair notification linking back to the login form. Just
-re-enter the password.
-
-### Lock works but unlock doesn't
-
-Unlock requires the **S-PIN** you configured in the Porsche app. Open the
-`lock` entity's options and set the *default code* to your 4-digit S-PIN; HA
-will pass it on every unlock call.
-
-### Vehicle is missing from the device list
-
-- The model is older than MY 2021 / doesn't ship Porsche Connect — confirm
-  on <https://connect-store.porsche.com/>.
-- The Porsche Connect subscription has lapsed — renew it in My Porsche. Home
-  Assistant shows this under **Settings → Repairs**.
-- The car left the account. After two refreshes without it (about an hour),
-  its device and entities are removed; they are created again if it comes back.
-- The car was not paired in the PCM. Pair it, then reload the integration or
-  wait for the next 32-minute tick.
-
-### Enabling debug logs
-
-To capture verbose logs for a bug report, add this to `configuration.yaml`:
+**Reporting a problem.** Download the diagnostics from the device page (⋮ →
+Download diagnostics): your password and position are removed, your email and VIN masked. For
+more detail, enable debug logs:
 
 ```yaml
 logger:
-  default: info
   logs:
     custom_components.porscheconnect: debug
     pyporscheconnectapi: debug
 ```
 
-Reload the logger or restart HA, reproduce the issue, then attach the relevant
-log slice to the GitHub issue.
-
-The log never holds your password, a token or the unlock PIN. It does name your
-VIN: remove it before posting. The position of the car and its pairing codes
-are left out of the payload dumps. The diagnostics download (device page → Download
-diagnostics) is already redacted and is often enough.
+The log never holds your password, a token or your PIN. It does name your VIN:
+remove it before posting.
 
 ## Known limitations
 
-- **Active Porsche Connect subscription is mandatory.** Without it, the API
-  rejects vehicle queries even though authentication succeeds.
-- **Porsche Car Connect is not supported.** That is a different service with
-  a different backend; this integration targets *Porsche Connect* only.
-- **Cars must be paired in the PCM.** Un-paired cars expose empty
-  `commands` / `measurements` payloads, so most entities are not created.
-- **Captcha may be required at first login.** Handled by the config flow but
-  occasionally loops if Porsche flags the IP.
-- **2FA / TOTP is not supported by the underlying library.** If you have
-  enabled 2FA on the Porsche ID, login will fail.
-- **Porsche may not keep a target state of charge.** The `number.target_soc`
-  entity writes to the active charging profile; on some model years and
-  firmware versions Porsche reverts the value on its side.
-- **No push updates.** The integration polls every 32 minutes by default; for
-  near-real-time data, use the *Get current vehicle information* button.
+- An active Porsche Connect subscription is required, and the car must be paired
+  in its PCM.
+- Porsche Car Connect, the older service, is not supported.
+- Porsche accounts with two-factor authentication cannot sign in.
+- Data is at most 32 minutes old: Porsche sends nothing by itself.
+- On some model years, Porsche does not keep a charge target set from outside
+  its own app.
+- A captcha may be asked at sign-in, more often after several attempts.
 
 ## Removal
 
 1. Go to **Settings → Devices & services → My Porsche Connect**.
-2. Open the integration card, click the **⋮** menu on the entry, choose
-   **Delete**, and confirm. The devices and entities disappear immediately.
-3. (Optional) Revoke the OAuth grant from
-   [My Porsche](https://login.porsche.com/) → *Privacy & data* → connected
-   apps, if you want Porsche to invalidate the stored refresh token.
+2. Click **⋮** on the entry, choose **Delete** and confirm. The device and its
+   entities disappear.
+3. To uninstall completely: in HACS, open **My Porsche Connect → ⋮ → Remove**,
+   then restart Home Assistant.
 
-To fully uninstall:
+## Credits and contributing
 
-1. Remove the integration as above.
-2. In HACS, open **My Porsche Connect** → ⋮ → **Remove**.
-3. Restart Home Assistant.
+This is a fork of [CJNE/ha-porscheconnect](https://github.com/CJNE/ha-porscheconnect)
+by [Johan Isacsson](https://github.com/CJNE) and its contributors, maintained by
+[bartolije](https://github.com/bartolije), with its own version of the library,
+[pyporscheconnectapi-bartolije](https://github.com/bartolije/pyporscheconnectapi).
+Fixes that also apply to the original project are sent back to it.
 
-## Contributing / Development
+Bug reports and ideas are welcome in the
+[issue tracker](https://github.com/bartolije/ha-porscheconnect/issues). To
+contribute code, read [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Bug reports and feature requests are welcome on the
-[GitHub issue tracker](https://github.com/bartolije/ha-porscheconnect/issues).
-General usage questions go to the [HA Community Forum][forum] or
-[Discord][discord].
-
-If you want to contribute code, read
-[CONTRIBUTING.md](https://github.com/bartolije/ha-porscheconnect/blob/main/CONTRIBUTING.md)
-first — it covers the checks CI runs, pre-commit hooks, the tests and the
-release order.
+This project is not affiliated with Porsche.
 
 ---
 
@@ -545,20 +414,6 @@ release order.
 [ha-shield]: https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41BDF5.svg?style=for-the-badge
 [hacs-repo]: https://my.home-assistant.io/redirect/hacs_repository/?owner=bartolije&repository=ha-porscheconnect&category=integration
 [hacs-repo-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
-[ruff]: https://github.com/astral-sh/ruff
-[ruff-shield]: https://img.shields.io/badge/code%20style-ruff-261230.svg?style=for-the-badge
-[commits-shield]: https://img.shields.io/github/commit-activity/y/bartolije/ha-porscheconnect.svg?style=for-the-badge
-[commits]: https://github.com/bartolije/ha-porscheconnect/commits/main
-[hacs]: https://hacs.xyz
-[hacs_badge]: https://img.shields.io/badge/HACS-Custom-41BDF5.svg?style=for-the-badge
-[discord]: https://discord.gg/Qa5fW2R
-[discord-shield]: https://img.shields.io/discord/330944238910963714.svg?style=for-the-badge
-[forum-shield]: https://img.shields.io/badge/community-forum-brightgreen.svg?style=for-the-badge
-[forum]: https://community.home-assistant.io/
 [license-shield]: https://img.shields.io/github/license/bartolije/ha-porscheconnect.svg?style=for-the-badge
-[maintenance-shield]: https://img.shields.io/badge/maintainer-%40bartolije-blue.svg?style=for-the-badge
-[pre-commit]: https://github.com/pre-commit/pre-commit
-[pre-commit-shield]: https://img.shields.io/badge/pre--commit-enabled-brightgreen?style=for-the-badge
 [releases-shield]: https://img.shields.io/github/release/bartolije/ha-porscheconnect.svg?style=for-the-badge
 [releases]: https://github.com/bartolije/ha-porscheconnect/releases
-[user_profile]: https://github.com/bartolije

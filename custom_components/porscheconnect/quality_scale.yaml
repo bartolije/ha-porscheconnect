@@ -46,7 +46,7 @@ rules:
   docs-actions:
     status: done
     comment: |
-      README "Services / Actions": climatisation_start and climatisation_stop,
+      README "Actions": climatisation_start and climatisation_stop,
       their parameters and example calls.
   docs-conditions:
     status: exempt
@@ -166,7 +166,7 @@ rules:
   docs-data-update:
     status: done
     comment: |
-      README "Polling and data updates".
+      README "How data is updated".
   docs-examples:
     status: done
     comment: |
@@ -178,12 +178,12 @@ rules:
   docs-supported-devices:
     status: done
     comment: |
-      README "Supported vehicles".
+      README "Supported cars".
   docs-supported-functions:
     status: done
     comment: |
-      README "Supported entities and capabilities": every entity with the
-      condition under which it is created.
+      README "What you get": the entities by purpose, then every entity with
+      the condition under which it is created.
   docs-troubleshooting:
     status: done
     comment: |
@@ -191,7 +191,7 @@ rules:
   docs-use-cases:
     status: done
     comment: |
-      README "Examples": each automation is a use case.
+      README "What you can do".
   dynamic-devices:
     status: done
     comment: |
