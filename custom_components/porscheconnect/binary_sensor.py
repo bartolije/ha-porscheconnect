@@ -60,7 +60,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         # Reflects an account-side configuration flag rather than live
         # vehicle state — useful when debugging "why are my services not
         # working", but noisy on a default dashboard.
-        name="Remote access",
         key="remote_access",
         translation_key="remote_access",
         measurement_node="REMOTE_ACCESS_AUTHORIZATION",
@@ -75,7 +74,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         is_available=lambda v: "REMOTE_ACCESS_AUTHORIZATION" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
-        name="Privacy mode",
         key="privacy_mode",
         translation_key="privacy_mode",
         measurement_node="GLOBAL_PRIVACY_MODE",
@@ -84,7 +82,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         entity_category=EntityCategory.DIAGNOSTIC,
     ),
     PorscheBinarySensorEntityDescription(
-        name="Parking brake",
         key="parking_brake",
         translation_key="parking_brake",
         measurement_node="PARKING_BRAKE",
@@ -94,7 +91,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         is_available=lambda v: "PARKING_BRAKE" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
-        name="Parking light",
         key="parking_light",
         translation_key="parking_light",
         measurement_node="PARKING_LIGHT",
@@ -104,7 +100,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         is_available=lambda v: "PARKING_LIGHT" in v.data,
     ),
     PorscheBinarySensorEntityDescription(
-        name="Doors and lids",
         key="doors_and_lids",
         translation_key="doors_and_lids",
         value_fn=lambda v: not v.vehicle_closed,
@@ -112,7 +107,6 @@ SENSOR_TYPES: list[PorscheBinarySensorEntityDescription] = [
         device_class=BinarySensorDeviceClass.OPENING,
     ),
     PorscheBinarySensorEntityDescription(
-        name="Tire pressure status",
         key="tire_pressure_status",
         translation_key="tire_pressure_status",
         value_fn=lambda v: not v.tire_pressure_status,
@@ -181,13 +175,17 @@ _OPEN_STATE_CONFIG: list[_OpenStateConfig] = [
     _OpenStateConfig("CHARGE_FLAP_RIGHT", "charge_flap_right"),
     # Active aero spoiler (Taycan / 911 etc.) — diagnostic, cosmetic.
     _OpenStateConfig(
-        "SPOILER", "spoiler",
-        enabled_by_default=False, entity_category=_DIAG,
+        "SPOILER",
+        "spoiler",
+        enabled_by_default=False,
+        entity_category=_DIAG,
     ),
     # Service flap (washer fluid / oil access) — maintenance-only, disabled.
     _OpenStateConfig(
-        "SERVICE_FLAP", "service_flap",
-        enabled_by_default=False, entity_category=_DIAG,
+        "SERVICE_FLAP",
+        "service_flap",
+        enabled_by_default=False,
+        entity_category=_DIAG,
     ),
 ]
 
@@ -247,7 +245,7 @@ async def async_setup_entry(
     config_entry.async_on_unload(coordinator.async_add_listener(_async_add_entities))
 
 
-class PorscheBinarySensor(BinarySensorEntity, PorscheBaseEntity):
+class PorscheBinarySensor(PorscheBaseEntity, BinarySensorEntity):
     """Representation of a Porsche binary sensor."""
 
     entity_description: PorscheBinarySensorEntityDescription
@@ -261,7 +259,6 @@ class PorscheBinarySensor(BinarySensorEntity, PorscheBaseEntity):
         """Initialize of the sensor."""
         super().__init__(coordinator, vehicle)
 
-        self.coordinator = coordinator
         self.entity_description = description
         self._attr_unique_id = f"{self._vin}-{description.key}"
 
@@ -282,7 +279,6 @@ class PorscheBinarySensor(BinarySensorEntity, PorscheBaseEntity):
             self.entity_description.key,
             self._vin,
             self._attr_is_on,
-            # state,
         )
 
         if self.entity_description.attr_fn:

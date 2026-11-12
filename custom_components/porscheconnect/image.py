@@ -33,34 +33,29 @@ class PorscheImageEntityDescription(ImageEntityDescription):
 # image entities per car on first install.
 IMAGE_TYPES: list[PorscheImageEntityDescription] = [
     PorscheImageEntityDescription(
-        name="Front view",
         key="front_view",
         translation_key="front_view",
         view="frontView",
         entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
-        name="Side view",
         key="side_view",
         translation_key="side_view",
         view="sideView",
     ),
     PorscheImageEntityDescription(
-        name="Rear view",
         key="rear_view",
         translation_key="rear_view",
         view="rearView",
         entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
-        name="Rear top view",
         key="rear_top_view",
         translation_key="rear_top_view",
         view="rearTopView",
         entity_registry_enabled_default=False,
     ),
     PorscheImageEntityDescription(
-        name="Top view",
         key="top_view",
         translation_key="top_view",
         view="topView",

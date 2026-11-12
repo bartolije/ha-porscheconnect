@@ -297,3 +297,23 @@ async def test_services_survive_entry_reload(
 
     assert hass.services.has_service(DOMAIN, "climatisation_start")
     assert hass.services.has_service(DOMAIN, "climatisation_stop")
+
+
+def test_library_pin_is_the_same_everywhere() -> None:
+    """manifest.json and requirements_test.txt pin the same library version.
+
+    Dependabot only raises the second, and the daily Porsche check reads it.
+    """
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).parent.parent
+    manifest = json.loads(
+        (root / "custom_components/porscheconnect/manifest.json").read_text()
+    )
+    (pinned,) = (
+        line
+        for line in (root / "requirements_test.txt").read_text().splitlines()
+        if line.startswith("pyporscheconnectapi")
+    )
+    assert manifest["requirements"] == [pinned]

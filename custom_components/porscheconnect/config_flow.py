@@ -102,6 +102,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     state: str | None = None
     code_verifier: str | None = None
     _client: httpx2.AsyncClient | None = None
+    _existing_entry_data: dict[str, Any]
 
     @callback
     def _get_http_client(self) -> httpx2.AsyncClient:
@@ -162,6 +163,25 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
         )
         return entry_data
 
+    @callback
+    def _async_finish(
+        self, credentials: dict[str, Any], info: dict[str, Any]
+    ) -> ConfigFlowResult:
+        """Create the entry, or update the one being reauthenticated/reconfigured."""
+        entry_data = self._get_entry_data(
+            credentials[CONF_EMAIL],
+            credentials[CONF_PASSWORD],
+            info.get(CONF_ACCESS_TOKEN),
+        )
+        if entry := self._get_entry_for_current_flow():
+            self._abort_if_account_mismatch()
+            return self.async_update_reload_and_abort(
+                entry,
+                unique_id=self.unique_id,
+                data=entry_data,
+            )
+        return self.async_create_entry(title=info["title"], data=entry_data)
+
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
@@ -192,32 +212,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
                 self.state = info.get(CONF_OAUTH_STATE)
                 self.code_verifier = info.get(CONF_CODE_VERIFIER)
                 return self._async_form_captcha()
-            entry_data = self._get_entry_data(
-                user_input[CONF_EMAIL],
-                user_input[CONF_PASSWORD],
-                info.get(CONF_ACCESS_TOKEN),
-            )
-
-            if self.source == SOURCE_REAUTH:
-                self._abort_if_account_mismatch()
-                return self.async_update_reload_and_abort(
-                    self._get_reauth_entry(),
-                    unique_id=self.unique_id,
-                    data=entry_data,
-                )
-
-            if self.source == SOURCE_RECONFIGURE:
-                self._abort_if_account_mismatch()
-                return self.async_update_reload_and_abort(
-                    self._get_reconfigure_entry(),
-                    unique_id=self.unique_id,
-                    data=entry_data,
-                )
-
-            return self.async_create_entry(
-                title=info["title"],
-                data=entry_data,
-            )
+            return self._async_finish(user_input, info)
 
         except InvalidAuth:
             errors["base"] = "invalid_auth"
@@ -295,32 +290,7 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
                     self.code_verifier = info.get(CONF_CODE_VERIFIER)
                     return self._async_form_captcha()
 
-                entry_data = self._get_entry_data(
-                    user_input[CONF_EMAIL],
-                    user_input[CONF_PASSWORD],
-                    info.get(CONF_ACCESS_TOKEN),
-                )
-
-                if self.source == SOURCE_REAUTH:
-                    self._abort_if_account_mismatch()
-                    return self.async_update_reload_and_abort(
-                        self._get_reauth_entry(),
-                        unique_id=self.unique_id,
-                        data=entry_data,
-                    )
-
-                if self.source == SOURCE_RECONFIGURE:
-                    self._abort_if_account_mismatch()
-                    return self.async_update_reload_and_abort(
-                        self._get_reconfigure_entry(),
-                        unique_id=self.unique_id,
-                        data=entry_data,
-                    )
-
-                return self.async_create_entry(
-                    title=info["title"],
-                    data=entry_data,
-                )
+                return self._async_finish(user_input, info)
 
             except (InvalidAuth, CannotConnect) as err:
                 # The captcha and its login transaction are spent: showing the

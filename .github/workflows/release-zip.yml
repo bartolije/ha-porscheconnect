@@ -20,7 +20,7 @@ jobs:
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ env.TAG }}
 
@@ -29,6 +29,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          version=$(python3 -c "import json; print(json.load(open('manifest.json'))['version'])")
+          if [ "$version" != "$TAG" ]; then
+            echo "::error::Release tag $TAG, but manifest.json says version $version"
+            exit 1
+          fi
           zip -r "$RUNNER_TEMP/porscheconnect.zip" . -x '*__pycache__*'
           unzip -l "$RUNNER_TEMP/porscheconnect.zip" | grep -q ' manifest.json$'
           gh release upload "$TAG" "$RUNNER_TEMP/porscheconnect.zip" --clobber

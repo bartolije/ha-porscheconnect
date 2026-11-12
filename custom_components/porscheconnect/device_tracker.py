@@ -67,35 +67,34 @@ class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
 
         self._attr_unique_id = self._vin
         if (
-            "customName" in vehicle.data and
-            vehicle.data["customName"] != vehicle.model_name
+            "customName" in vehicle.data
+            and vehicle.data["customName"] != vehicle.model_name
             and vehicle.data["customName"] is not None
         ):
             self._attr_name = vehicle.data["customName"]
         else:
             self._attr_name = None
-        self._tracking_enabled = True
         self._attr_icon = "mdi:crosshairs-gps"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         """Return entity specific state attributes."""
         data = {"updated_at": self.vehicle.location_updated_at}
-        if self._tracking_enabled and self.vehicle.location[2] is not None:
+        if self.vehicle.location[2] is not None:
             data["direction"] = float(self.vehicle.location[2])
         return data
 
     @property
     def latitude(self) -> float | None:
         """Return latitude value of the device."""
-        if self._tracking_enabled and self.vehicle.location[0] is not None:
+        if self.vehicle.location[0] is not None:
             return float(self.vehicle.location[0])
         return None
 
     @property
     def longitude(self) -> float | None:
         """Return longitude value of the device."""
-        if self._tracking_enabled and self.vehicle.location[1] is not None:
+        if self.vehicle.location[1] is not None:
             return float(self.vehicle.location[1])
         return None
 

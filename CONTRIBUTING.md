@@ -44,11 +44,11 @@ People _love_ thorough bug reports. I'm not even kidding.
 
 ## Use a Consistent Coding Style
 
-Use [black](https://github.com/ambv/black) and [prettier](https://prettier.io/)
-to make sure the code follows the style.
+[Ruff](https://github.com/astral-sh/ruff) lints and formats the code, and mypy
+checks the types; CI runs `ruff check`, `ruff format --check` and `mypy`.
 
-Or use the `pre-commit` settings implemented in this repository
-(see deicated section below).
+The `pre-commit` settings implemented in this repository run ruff on every commit
+(see dedicated section below).
 
 ## Test your code modification
 
@@ -61,7 +61,7 @@ Home Assistant instance running and already configured with the included
 file.
 
 You can use the `pre-commit` settings implemented in this repository to have
-linting tool checking your contributions (see deicated section below).
+linting tool checking your contributions (see dedicated section below).
 
 You should also verify that existing [tests](./tests) are still working
 and you are encouraged to add new ones.
@@ -71,10 +71,12 @@ You can run the tests using the following commands from the root folder:
 # Create a virtual environment (Python 3.14.2 or newer, as Home Assistant)
 python3.14 -m venv venv
 source venv/bin/activate
-# Install requirements
-pip install -r requirements_test.txt
-# Run tests and get a summary of successes/failures and code coverage
-pytest --durations=10 --cov-report term-missing --cov=custom_components.porscheconnect tests
+# Install requirements (tests, ruff, mypy, pre-commit)
+pip install -r requirements_dev.txt
+# Run tests with code coverage: CI fails under 95 %
+pytest --durations=10 --cov=custom_components.porscheconnect tests
+# Lint, format check and type check, as CI does
+ruff check && ruff format --check && mypy
 ```
 
 If any of the tests fail, make the necessary changes to the tests as part of

@@ -21,8 +21,8 @@ jobs:
     if: github.event.schedule != '30 5 * * 0,2-6'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
       - name: Install requirements with the newest pytest-homeassistant
@@ -31,14 +31,26 @@ jobs:
           pip install --upgrade pytest-homeassistant
           python -c "import homeassistant.const as c; print('Home Assistant', c.__version__)"
       - name: Tests suite
+        id: tests
         run: pytest --timeout=9 -n auto -p no:sugar tests
+      - name: Open an issue
+        if: failure() && steps.tests.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh label create home-assistant-latest --color FBCA04 --description "Tests fail on the newest Home Assistant" --force
+          if [ "$(gh issue list --state open --label home-assistant-latest --json number --jq length)" = "0" ]; then
+            gh issue create --title "Tests fail on the newest Home Assistant" --label home-assistant-latest \
+              --body "The weekly run on the newest pytest-homeassistant failed: $GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+          fi
 
   porsche-api:
     name: Porsche still accepts the library
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-python@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0 # v7.1.0
         with:
           python-version: "3.14"
       - name: Install the pinned library
