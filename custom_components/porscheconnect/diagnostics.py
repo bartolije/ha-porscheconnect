@@ -19,6 +19,7 @@ from .coordinator import PorscheConnectConfigEntry
 # Top-level entry-data keys we hand to async_redact_data. Anything stored
 # under one of these is replaced with ``**REDACTED**``.
 TO_REDACT_ENTRY: set[str] = {
+    CONF_EMAIL,
     CONF_PASSWORD,
     CONF_ACCESS_TOKEN,
     "refresh_token",
@@ -48,27 +49,20 @@ TO_REDACT_VEHICLE_DATA: set[str] = {
     "DESTINATIONS",
     "LOCATION_ALARMS",
     "VTS_CERTIFICATE_LIST",
+    # Places the car goes to and when: home, work, departure times.
+    "CHARGING_PROFILES",
+    "PRED_PRECON_LOCATION_EXCEPTIONS",
+    "TIMERS",
+    "DEPARTURES",
+    # What the owner called the car.
+    "customName",
+    "name",
 }
 
 _COORDINATE_KEYS = {"latitude", "lat", "longitude", "lon", "lng"}
 
-# Local-part of an email is masked once it gets longer than this threshold.
-_EMAIL_LOCAL_KEEP = 2
-
 # VIN suffix length we keep visible (last N chars).
 _VIN_SUFFIX_KEEP = 4
-
-
-def _mask_email(email: str | None) -> str | None:
-    """Mask an email's local part, keeping the first two characters."""
-    if not email or "@" not in email:
-        return email
-    local, _, domain = email.partition("@")
-    if len(local) <= _EMAIL_LOCAL_KEEP:
-        masked_local = local + "***"
-    else:
-        masked_local = local[:_EMAIL_LOCAL_KEEP] + "***"
-    return f"{masked_local}@{domain}"
 
 
 def _mask_vin(vin: str | None) -> str | None:
@@ -122,49 +116,33 @@ async def async_get_config_entry_diagnostics(
     """Return diagnostics for a config entry."""
     coordinator = entry.runtime_data
 
-    redacted_entry_data = async_redact_data(dict(entry.data), TO_REDACT_ENTRY)
-    if CONF_EMAIL in redacted_entry_data:
-        redacted_entry_data[CONF_EMAIL] = _mask_email(redacted_entry_data[CONF_EMAIL])
-
-    vehicles: list[dict[str, Any]] = []
-    for vehicle in getattr(coordinator, "vehicles", []) or []:
-        raw_data = getattr(vehicle, "data", {}) or {}
-        vehicles.append(
-            {
-                "vin": _mask_vin(getattr(vehicle, "vin", None)),
-                "model_name": getattr(vehicle, "model_name", None)
-                or raw_data.get("modelName"),
-                "privacy_mode": getattr(vehicle, "privacy_mode", None),
-                "capabilities": _vehicle_capability_flags(vehicle),
-                "data": _redact_vehicle_data(raw_data),
-            },
-        )
-
-    last_success_time = getattr(coordinator, "last_update_success_time", None)
-    update_interval = getattr(coordinator, "update_interval", None)
-
     return {
         "entry": {
             "entry_id": entry.entry_id,
-            "title": _mask_email(entry.title) if entry.title else entry.title,
             "version": entry.version,
             "domain": entry.domain,
-            "created_at": getattr(entry, "created_at", None)
-            and entry.created_at.isoformat(),
-            "modified_at": getattr(entry, "modified_at", None)
-            and entry.modified_at.isoformat(),
-            "data": redacted_entry_data,
+            "created_at": entry.created_at.isoformat(),
+            "modified_at": entry.modified_at.isoformat(),
+            "data": async_redact_data(dict(entry.data), TO_REDACT_ENTRY),
             "options": dict(entry.options),
         },
         "coordinator": {
-            "last_update_success": getattr(coordinator, "last_update_success", None),
-            "last_update_success_time": (
-                last_success_time.isoformat() if last_success_time is not None else None
-            ),
+            "last_update_success": coordinator.last_update_success,
             "update_interval_seconds": (
-                update_interval.total_seconds() if update_interval is not None else None
+                coordinator.update_interval.total_seconds()
+                if coordinator.update_interval
+                else None
             ),
         },
-        "vehicle_count": len(vehicles),
-        "vehicles": vehicles,
+        "vehicle_count": len(coordinator.vehicles),
+        "vehicles": [
+            {
+                "vin": _mask_vin(vehicle.vin),
+                "model_name": vehicle.model_name,
+                "privacy_mode": vehicle.privacy_mode,
+                "capabilities": _vehicle_capability_flags(vehicle),
+                "data": _redact_vehicle_data(vehicle.data),
+            }
+            for vehicle in coordinator.vehicles
+        ],
     }

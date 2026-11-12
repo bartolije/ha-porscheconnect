@@ -10,7 +10,7 @@ from .const import DOMAIN
 from .coordinator import PorscheConnectDataUpdateCoordinator
 
 
-class PorscheBaseEntity(CoordinatorEntity):
+class PorscheBaseEntity(CoordinatorEntity[PorscheConnectDataUpdateCoordinator]):
     """Common base for entities."""
 
     coordinator: PorscheConnectDataUpdateCoordinator

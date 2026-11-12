@@ -25,7 +25,7 @@ from homeassistant.const import (
     UnitOfTime,
 )
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -85,6 +85,25 @@ def _contract_end(v: PorscheVehicle) -> datetime | None:
     return dt_util.parse_datetime(until) if isinstance(until, str) else None
 
 
+CHARGING_STATUSES = [
+    "charging",
+    "charging_completed",
+    "charging_error",
+    "charging_stopped",
+    "initialising",
+    "instant_charging",
+    "not_charging",
+    "not_plugged",
+    "off",
+]
+
+
+def _charging_status(v: PorscheVehicle) -> str | None:
+    """Return CHARGING_SUMMARY.status, or None for a value the enum doesn't know yet."""
+    status = str((v.data.get("CHARGING_SUMMARY") or {}).get("status", "")).lower()
+    return status if status in CHARGING_STATUSES else None
+
+
 BATTERY_ENERGY_STATUSES = ["normal", "warning", "critical"]
 
 
@@ -114,18 +133,17 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         translation_key="charging_target",
         measurement_node="CHARGING_SUMMARY",
         measurement_leaf="minSoC",
-        device_class=None,
+        device_class=SensorDeviceClass.BATTERY,
         native_unit_of_measurement=PERCENTAGE,
-        state_class=None,
         suggested_display_precision=0,
         is_available=lambda v: v.has_electric_drivetrain,
     ),
     PorscheSensorEntityDescription(
         key="charging_status",
         translation_key="charging_status",
-        measurement_node="CHARGING_SUMMARY",
-        measurement_leaf="status",
+        value_fn=_charging_status,
         device_class=SensorDeviceClass.ENUM,
+        options=CHARGING_STATUSES,
         is_available=lambda v: v.has_electric_drivetrain,
     ),
     PorscheSensorEntityDescription(
@@ -446,7 +464,7 @@ SENSOR_TYPES.extend(_service_descriptions())
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the sensors from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data

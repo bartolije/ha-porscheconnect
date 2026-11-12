@@ -12,9 +12,9 @@ from functools import reduce
 from typing import Any
 
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_ACCESS_TOKEN, CONF_SCAN_INTERVAL
+from homeassistant.const import CONF_ACCESS_TOKEN
 from homeassistant.core import HomeAssistant, callback
-from homeassistant.exceptions import ConfigEntryAuthFailed
+from homeassistant.exceptions import ConfigEntryAuthFailed, ConfigEntryError
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -34,6 +34,9 @@ _LOGGER = logging.getLogger(__name__)
 SCAN_INTERVAL = timedelta(seconds=DEFAULT_SCAN_INTERVAL)
 
 HTTP_UNAUTHORIZED = 401
+# Mobile access disabled, account locked: Porsche will keep refusing until the
+# owner acts, so retrying is pointless.
+_HTTP_ACCOUNT_BLOCKED = (405, 423)
 
 # Picture locations are cosmetic: when the API has none for a car, ask again
 # once a day rather than on every refresh of a rate-limited API.
@@ -46,8 +49,12 @@ _STALE_AFTER_REFRESHES = 2
 # One refresh: the vehicle list, then one overview per car (seconds).
 _UPDATE_TIMEOUT = 60
 
-# Type alias for the runtime data attached to each config entry.
-PorscheConnectConfigEntry = ConfigEntry["PorscheConnectDataUpdateCoordinator"]
+type PorscheConnectConfigEntry = ConfigEntry[PorscheConnectDataUpdateCoordinator]
+
+
+def _error_code(exc: PorscheExceptionError) -> int | str | None:
+    """Return the HTTP status of an API error, when the library has one."""
+    return getattr(exc, "code", None)
 
 
 def _is_auth_error(exc: PorscheExceptionError) -> bool:
@@ -56,7 +63,7 @@ def _is_auth_error(exc: PorscheExceptionError) -> bool:
     # captcha required mid-polling must surface as a reauth, not a plain retry.
     if isinstance(exc, (PorscheWrongCredentialsError, PorscheCaptchaRequiredError)):
         return True
-    return getattr(exc, "code", None) == HTTP_UNAUTHORIZED
+    return _error_code(exc) == HTTP_UNAUTHORIZED
 
 
 def get_from_dict(datadict: dict[str, Any] | None, keystring: str) -> Any:
@@ -92,7 +99,7 @@ def async_save_token(
     )
 
 
-class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
+class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator[None]):
     """Class to manage fetching Porsche data."""
 
     config_entry: PorscheConnectConfigEntry
@@ -112,21 +119,11 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
         self._picture_attempts: dict[str, datetime] = {}
         self._missed_refreshes: dict[str, int] = {}
 
-        scan_interval = timedelta(
-            seconds=config_entry.options.get(
-                CONF_SCAN_INTERVAL,
-                config_entry.data.get(
-                    CONF_SCAN_INTERVAL,
-                    SCAN_INTERVAL.total_seconds(),
-                ),
-            ),
-        )
-
         super().__init__(
             hass,
             _LOGGER,
             name=DOMAIN,
-            update_interval=scan_interval,
+            update_interval=SCAN_INTERVAL,
             config_entry=config_entry,
         )
 
@@ -186,6 +183,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if missed[vin] < _STALE_AFTER_REFRESHES:
                 continue
             del missed[vin]
+            _LOGGER.info("Removing %s: it is no longer on the account", device.name)
             self.async_forget_vehicle(vin)
             device_registry.async_remove_device(device.id)
         self._missed_refreshes = missed
@@ -194,12 +192,16 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
     def async_forget_vehicle(self, vin: str) -> None:
         """Forget a car whose device is removed; back later, it is set up again."""
         self._seen_vehicles.pop(vin, None)
-        ir.async_delete_issue(self.hass, DOMAIN, f"connect_inactive_{vin}")
+        ir.async_delete_issue(self.hass, DOMAIN, self._contract_issue_id(vin))
+
+    def _contract_issue_id(self, vin: str) -> str:
+        """Return the issue of one car of this entry."""
+        return f"connect_inactive_{self.config_entry.entry_id}_{vin}"
 
     @callback
     def _async_update_contract_issue(self, vehicle: PorscheVehicle) -> None:
         """Tell the user when a car has no active Porsche Connect contract."""
-        issue_id = f"connect_inactive_{vehicle.vin}"
+        issue_id = self._contract_issue_id(vehicle.vin)
         if vehicle.has_porsche_connect:
             if ir.async_get(self.hass).async_get_issue(DOMAIN, issue_id):
                 ir.async_delete_issue(self.hass, DOMAIN, issue_id)
@@ -213,6 +215,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             self.hass,
             DOMAIN,
             issue_id,
+            config_entry_id=self.config_entry.entry_id,
             is_fixable=False,
             severity=ir.IssueSeverity.WARNING,
             translation_key="connect_inactive",
@@ -221,7 +224,7 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             },
         )
 
-    async def _async_update_data(self) -> dict[str, Any]:
+    async def _async_update_data(self) -> None:
         """Fetch data from API endpoint."""
         try:
             async with asyncio.timeout(_UPDATE_TIMEOUT):
@@ -248,6 +251,12 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     translation_key="auth_failed",
                     translation_placeholders={"error": str(exc)},
                 ) from exc
+            if _error_code(exc) in _HTTP_ACCOUNT_BLOCKED:
+                raise ConfigEntryError(
+                    translation_domain=DOMAIN,
+                    translation_key="account_blocked",
+                    translation_placeholders={"error": str(exc)},
+                ) from exc
             raise UpdateFailed(
                 translation_domain=DOMAIN,
                 translation_key="update_failed",
@@ -270,4 +279,3 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     config_entry=self.config_entry,
                     access_token=copy.deepcopy(current_token),
                 )
-            return {}

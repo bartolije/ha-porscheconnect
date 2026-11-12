@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import base64
 import logging
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import probatio as vol
@@ -28,343 +29,258 @@ from pyporscheconnectapi.exceptions import (
     PorscheWrongCredentialsError,
 )
 
-from . import async_create_porsche_client
-from .const import (
-    CONF_CAPTCHA_CODE,
-    CONF_CODE_VERIFIER,
-    CONF_OAUTH_STATE,
-    DOMAIN,
-    TRANSIENT_AUTH_FIELDS,
-)
-from .coordinator import PorscheConnectConfigEntry
+from . import async_close_porsche_client, async_create_porsche_client
+from .const import CONF_CAPTCHA_CODE, DOMAIN
 
 if TYPE_CHECKING:
     import httpx2
 
 _LOGGER = logging.getLogger(__name__)
 
-_EMAIL_SELECTOR = TextSelector(
-    TextSelectorConfig(type=TextSelectorType.EMAIL, autocomplete="username")
-)
 _PASSWORD_SELECTOR = TextSelector(
     TextSelectorConfig(type=TextSelectorType.PASSWORD, autocomplete="current-password")
 )
 STEP_USER_DATA_SCHEMA = vol.Schema(
     {
-        vol.Required(CONF_EMAIL): _EMAIL_SELECTOR,
+        vol.Required(CONF_EMAIL): TextSelector(
+            TextSelectorConfig(type=TextSelectorType.EMAIL, autocomplete="username")
+        ),
         vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR,
     }
 )
-CHANGE_PASSWORD_SCHEMA = vol.Schema({vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR})
+# Reauthentication and reconfiguration keep the account: only the password.
+STEP_PASSWORD_DATA_SCHEMA = vol.Schema(
+    {vol.Required(CONF_PASSWORD): _PASSWORD_SELECTOR}
+)
+STEP_CAPTCHA_DATA_SCHEMA = vol.Schema(
+    {
+        vol.Required(CONF_CAPTCHA_CODE): TextSelector(
+            TextSelectorConfig(autocomplete="off")
+        )
+    }
+)
 
 
-async def validate_input(
-    client: httpx2.AsyncClient, data: dict[str, Any]
+class CaptchaRequired(exceptions.HomeAssistantError):
+    """Porsche wants a captcha before it goes on with the login."""
+
+    def __init__(self, err: PorscheCaptchaRequiredError) -> None:
+        """Keep what is needed to resume this login with the captcha code."""
+        super().__init__("Captcha required")
+        self.captcha = err.captcha or ""
+        self.state = err.state
+        self.code_verifier = err.code_verifier
+
+
+async def async_login(
+    client: httpx2.AsyncClient,
+    email: str,
+    password: str,
+    captcha: CaptchaRequired | None = None,
+    captcha_code: str | None = None,
 ) -> dict[str, Any]:
-    """Validate the user input allows us to connect.
+    """Log in to Porsche and return the token.
 
-    Data has the keys from STEP_USER_DATA_SCHEMA with values provided by the user.
+    With a captcha and the code the user read, resume the login it interrupted.
+    Raises CaptchaRequired, InvalidAuth or CannotConnect; anything else is a
+    bug and is left to the caller.
     """
-    token: dict[str, Any] = {}
+    resumed = captcha if captcha_code else None
     try:
-        conn = Connection(
-            email=data[CONF_EMAIL],
-            password=data[CONF_PASSWORD],
-            captcha_code=data.get(CONF_CAPTCHA_CODE),
-            state=data.get(CONF_OAUTH_STATE),
+        connection = Connection(
+            email=email,
+            password=password,
+            captcha_code=captcha_code if resumed else None,
+            state=resumed.state if resumed else None,
             # Auth0 enforces PKCE: the verifier of the interrupted login must
             # come back with the captcha code, or the resume is rejected.
-            code_verifier=data.get(CONF_CODE_VERIFIER),
-            token=token,
+            code_verifier=resumed.code_verifier if resumed else None,
+            token={},
             async_client=client,
         )
-    except PorscheExceptionError as exc:
-        _LOGGER.debug("Could not create connection: %s", exc)
-        raise InvalidAuth from exc
-
-    _LOGGER.debug("Attempting login")
-    try:
-        token = await conn.get_token()
-    except PorscheCaptchaRequiredError as exc:
-        _LOGGER.info("Captcha required to log in")
-        return {
-            "email": data[CONF_EMAIL],
-            "password": data[CONF_PASSWORD],
-            "captcha": exc.captcha,
-            CONF_OAUTH_STATE: exc.state,
-            CONF_CODE_VERIFIER: exc.code_verifier,
-        }
-    except PorscheWrongCredentialsError as exc:
-        _LOGGER.info("Wrong credentials.")
-        raise InvalidAuth from exc
-    except PorscheExceptionError as exc:
-        _LOGGER.info("Could not log in to Porsche Connect: %s", exc.message)
-        raise CannotConnect from exc
-    except Exception as exc:
-        _LOGGER.exception("Unexpected error during login")
-        raise CannotConnect from exc
-
-    return {"title": data[CONF_EMAIL], CONF_ACCESS_TOKEN: token}
+        token: dict[str, Any] = await connection.get_token()
+    except PorscheCaptchaRequiredError as err:
+        raise CaptchaRequired(err) from err
+    except PorscheWrongCredentialsError as err:
+        raise InvalidAuth from err
+    except PorscheExceptionError as err:
+        _LOGGER.debug("Could not log in to Porsche Connect: %s", err)
+        raise CannotConnect from err
+    return token
 
 
 class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Porsche Connect."""
 
-    VERSION = 2
+    VERSION = 3
 
-    email: str | None = None
-    password: str | None = None
-    captcha: str | None = None
-    state: str | None = None
-    code_verifier: str | None = None
-    _client: httpx2.AsyncClient | None = None
-    _existing_entry_data: dict[str, Any]
+    def __init__(self) -> None:
+        """Initialise the flow."""
+        self._email = ""
+        self._password = ""
+        # The captcha Porsche asked for, and the login it belongs to.
+        self._captcha: CaptchaRequired | None = None
+        self._client: httpx2.AsyncClient | None = None
 
     @callback
     def _get_http_client(self) -> httpx2.AsyncClient:
-        """Return the flow's HTTP client, shared by the login and captcha steps."""
+        """Return the flow's HTTP client: the captcha resumes the same session."""
         if self._client is None:
             self._client = async_create_porsche_client(self.hass)
         return self._client
 
     @callback
-    def _get_entry_for_current_flow(self) -> PorscheConnectConfigEntry | None:
-        """Return the existing entry for reauth/reconfigure flows."""
-        if self.source == SOURCE_REAUTH:
-            return self._get_reauth_entry()
-        if self.source == SOURCE_RECONFIGURE:
-            return self._get_reconfigure_entry()
-        return None
-
-    @callback
-    def _get_expected_unique_id(self) -> str | None:
-        """Return the account of the entry being reauthenticated or reconfigured.
-
-        Older entries may not have a unique_id yet, so fall back to the stored email.
-        """
-        entry = self._get_entry_for_current_flow()
-        assert entry is not None  # noqa: S101 - only called from those two flows
-        return entry.unique_id or entry.data.get(CONF_EMAIL)
-
-    @callback
-    def _abort_if_account_mismatch(self) -> None:
-        """Abort if reauth/reconfigure targets a different account."""
-        expected_unique_id = self._get_expected_unique_id()
-        # Entries created by the original integration keep the email as typed.
-        if (
-            expected_unique_id is None
-            or self.unique_id == expected_unique_id.strip().lower()
-        ):
-            return
-        self._abort_if_unique_id_mismatch()
-
-    @callback
-    def _get_entry_data(
-        self,
-        email: str,
-        password: str,
-        access_token: dict[str, Any] | None,
-    ) -> dict[str, Any]:
-        """Build the config entry data, without the in-flight auth secrets.
-
-        Those are single-use: keeping them in the entry only makes a later
-        login replay a stale captcha state.
-        """
-        entry = self._get_entry_for_current_flow()
-        entry_data = dict(entry.data) if entry else {}
-        for field in TRANSIENT_AUTH_FIELDS:
-            entry_data.pop(field, None)
-        entry_data.update(
-            {
-                CONF_EMAIL: email,
-                CONF_PASSWORD: password,
-                CONF_ACCESS_TOKEN: access_token,
-            },
-        )
-        return entry_data
-
-    @callback
-    def _async_finish(
-        self, credentials: dict[str, Any], info: dict[str, Any]
-    ) -> ConfigFlowResult:
-        """Create the entry, or update the one being reauthenticated/reconfigured."""
-        entry_data = self._get_entry_data(
-            credentials[CONF_EMAIL],
-            credentials[CONF_PASSWORD],
-            info.get(CONF_ACCESS_TOKEN),
-        )
-        if entry := self._get_entry_for_current_flow():
-            self._abort_if_account_mismatch()
-            return self.async_update_reload_and_abort(
-                entry,
-                unique_id=self.unique_id,
-                data=entry_data,
-            )
-        return self.async_create_entry(title=info["title"], data=entry_data)
+    def async_remove(self) -> None:
+        """Close the HTTP client when the flow ends."""
+        if self._client is not None:
+            self.hass.async_create_task(async_close_porsche_client(self._client))
 
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle the initial step."""
+        """Ask for the account, then log in."""
         if user_input is None:
-            return self.async_show_form(
-                step_id="user",
-                data_schema=STEP_USER_DATA_SCHEMA,
-            )
+            return self._async_show_credentials_form()
 
-        errors = {}
-        _LOGGER.debug("Validating input.")
-
-        # Normalize the email so case variants (foo@bar.com vs FOO@BAR.COM)
-        # don't create duplicate accounts.
-        unique_id = user_input[CONF_EMAIL].strip().lower()
-        user_input[CONF_EMAIL] = unique_id
-        await self.async_set_unique_id(unique_id)
-        if self.source not in (SOURCE_REAUTH, SOURCE_RECONFIGURE):
-            self._abort_if_unique_id_configured()
-
-        try:
-            info = await validate_input(self._get_http_client(), user_input)
-            if info.get("captcha") and info.get(CONF_OAUTH_STATE):
-                self.email = info.get("email")
-                self.password = info.get("password")
-                self.captcha = info.get("captcha")
-                self.state = info.get(CONF_OAUTH_STATE)
-                self.code_verifier = info.get(CONF_CODE_VERIFIER)
-                return self._async_form_captcha()
-            return self._async_finish(user_input, info)
-
-        except InvalidAuth:
-            errors["base"] = "invalid_auth"
-        except CannotConnect:
-            errors["base"] = "cannot_connect"
-
-        return self.async_show_form(
-            step_id="user",
-            data_schema=STEP_USER_DATA_SCHEMA,
-            errors=errors,
-        )
+        # Normalised, so that Foo@Bar.com and foo@bar.com are one account.
+        self._email = user_input[CONF_EMAIL].strip().lower()
+        self._password = user_input[CONF_PASSWORD]
+        await self.async_set_unique_id(self._email)
+        self._abort_if_unique_id_configured()
+        return await self._async_login()
 
     async def async_step_reauth(
+        self, entry_data: Mapping[str, Any]
+    ) -> ConfigFlowResult:
+        """Porsche refused the stored credentials: ask for the password again."""
+        self._email = entry_data[CONF_EMAIL]
+        return await self.async_step_reauth_confirm()
+
+    async def async_step_reauth_confirm(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle configuration by re-auth."""
-        await self.async_set_unique_id(
-            self._get_expected_unique_id(),
-            raise_on_progress=False,
-        )
-        return await self.async_step_user()
+        """Ask for the password of the account of the entry."""
+        if user_input is None:
+            return self._async_show_credentials_form()
+        self._password = user_input[CONF_PASSWORD]
+        return await self._async_login()
 
     async def async_step_reconfigure(
         self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Handle a reconfiguration flow initialized by the user."""
-        self._existing_entry_data = dict(self._get_reconfigure_entry().data)
-        await self.async_set_unique_id(
-            self._get_expected_unique_id(),
-            raise_on_progress=False,
-        )
-        return await self.async_step_change_password()
-
-    async def async_step_change_password(
-        self, user_input: dict[str, Any] | None = None
-    ) -> ConfigFlowResult:
-        """Show the change password step."""
-        if user_input is not None:
-            return await self.async_step_user(
-                {
-                    CONF_EMAIL: self._existing_entry_data[CONF_EMAIL],
-                    CONF_PASSWORD: user_input[CONF_PASSWORD],
-                },
-            )
-
-        return self.async_show_form(
-            step_id="change_password",
-            data_schema=CHANGE_PASSWORD_SCHEMA,
-            description_placeholders={
-                CONF_EMAIL: self._existing_entry_data[CONF_EMAIL],
-            },
-        )
+        """Change the password of an existing entry."""
+        if user_input is None:
+            self._email = self._get_reconfigure_entry().data[CONF_EMAIL]
+            return self._async_show_credentials_form()
+        self._password = user_input[CONF_PASSWORD]
+        return await self._async_login()
 
     async def async_step_captcha(
-        self,
-        user_input: dict[str, Any] | None = None,
+        self, user_input: dict[str, Any] | None = None
     ) -> ConfigFlowResult:
-        """Captcha verification step."""
-        if user_input is not None:
-            user_input = {
-                CONF_EMAIL: self.email,
-                CONF_PASSWORD: self.password,
-                CONF_CAPTCHA_CODE: user_input[CONF_CAPTCHA_CODE],
-                CONF_OAUTH_STATE: self.state,
-                CONF_CODE_VERIFIER: self.code_verifier,
-            }
-            errors = {}
-            try:
-                info = await validate_input(self._get_http_client(), user_input)
+        """Resume the login with the captcha the user read."""
+        if user_input is None:
+            return self._async_show_captcha_form()
+        return await self._async_login(user_input[CONF_CAPTCHA_CODE])
 
-                # Handle case where another captcha is required
-                if info.get("captcha") and info.get(CONF_OAUTH_STATE):
-                    self.captcha = info.get("captcha")
-                    self.state = info.get(CONF_OAUTH_STATE)
-                    self.code_verifier = info.get(CONF_CODE_VERIFIER)
-                    return self._async_form_captcha()
-
-                return self._async_finish(user_input, info)
-
-            except (InvalidAuth, CannotConnect) as err:
-                # The captcha and its login transaction are spent: showing the
-                # same image again can only fail. Start over from the
-                # credentials, which also asks for a fresh captcha (#23).
-                errors["base"] = (
-                    "invalid_auth" if isinstance(err, InvalidAuth) else "cannot_connect"
-                )
-                return self.async_show_form(
-                    step_id="user",
-                    data_schema=self.add_suggested_values_to_schema(
-                        STEP_USER_DATA_SCHEMA, {CONF_EMAIL: self.email}
-                    ),
-                    errors=errors,
-                )
-
-        return self._async_form_captcha()
+    async def _async_login(self, captcha_code: str | None = None) -> ConfigFlowResult:
+        """Log in, then finish the flow, ask for a captcha or show the error."""
+        captcha = self._captcha
+        errors: dict[str, str] = {}
+        try:
+            token = await async_login(
+                self._get_http_client(),
+                self._email,
+                self._password,
+                captcha,
+                captcha_code,
+            )
+        except CaptchaRequired as err:
+            self._captcha = err
+            return self._async_show_captcha_form()
+        except InvalidAuth:
+            errors["base"] = "invalid_auth"
+        except CannotConnect:
+            errors["base"] = "cannot_connect"
+        except Exception:
+            _LOGGER.exception("Unexpected exception")
+            errors["base"] = "unknown"
+        else:
+            return self._async_finish(token)
+        # A refused captcha and its login are spent: the next try starts a new
+        # login from the credentials, which asks for a fresh captcha (#23).
+        return self._async_show_credentials_form(errors)
 
     @callback
-    def _async_form_captcha(
-        self,
+    def _async_finish(self, token: dict[str, Any]) -> ConfigFlowResult:
+        """Create the entry, or update the one being reauthenticated/reconfigured."""
+        data = {
+            CONF_EMAIL: self._email,
+            CONF_PASSWORD: self._password,
+            CONF_ACCESS_TOKEN: token,
+        }
+        # The account cannot change here: these two flows never ask for it.
+        if self.source == SOURCE_REAUTH:
+            return self.async_update_reload_and_abort(
+                self._get_reauth_entry(), data_updates=data
+            )
+        if self.source == SOURCE_RECONFIGURE:
+            return self.async_update_reload_and_abort(
+                self._get_reconfigure_entry(), data_updates=data
+            )
+        return self.async_create_entry(title=self._email, data=data)
+
+    @callback
+    def _async_show_credentials_form(
+        self, errors: dict[str, str] | None = None
     ) -> ConfigFlowResult:
-        """Captcha verification form."""
+        """Show the form the flow started with, with the errors of the login."""
+        if self.source in (SOURCE_REAUTH, SOURCE_RECONFIGURE):
+            return self.async_show_form(
+                step_id=(
+                    "reauth_confirm" if self.source == SOURCE_REAUTH else "reconfigure"
+                ),
+                data_schema=STEP_PASSWORD_DATA_SCHEMA,
+                description_placeholders={"email": self._email},
+                errors=errors,
+            )
+        return self.async_show_form(
+            step_id="user",
+            data_schema=self.add_suggested_values_to_schema(
+                STEP_USER_DATA_SCHEMA, {CONF_EMAIL: self._email}
+            ),
+            errors=errors,
+        )
+
+    @callback
+    def _async_show_captcha_form(self) -> ConfigFlowResult:
+        """Show the captcha picture Porsche sent."""
+        assert self._captcha is not None  # noqa: S101 - set before every call
+        image = self._captcha.captcha
         # Best-effort upscaling of the Auth0 SVG captcha for readability. It is
         # normally a "data:image/svg+xml;base64,<payload>" data URI, but
         # tolerate other shapes (PNG/ACUL, plain URL) instead of crashing.
-        if isinstance(self.captcha, str) and "," in self.captcha:
-            header, payload = self.captcha.split(",", 1)
+        if "," in image:
+            header, payload = image.split(",", 1)
             try:
-                svg = base64.b64decode(payload)
-                svg = svg.replace(
+                svg = base64.b64decode(payload).replace(
                     b'width="150" height="50"',
                     b'width="300" height="100" style="background-color:white"',
                 )
-                self.captcha = header + "," + base64.b64encode(svg).decode("ascii")
+                image = header + "," + base64.b64encode(svg).decode("ascii")
             except ValueError:
-                pass  # not base64 — leave the captcha source untouched
+                pass  # not base64: leave the captcha source untouched
 
         return self.async_show_form(
             step_id="captcha",
-            data_schema=vol.Schema(
-                {
-                    vol.Required(CONF_CAPTCHA_CODE, default=vol.UNDEFINED): str,
-                },
-            ),
-            description_placeholders={
-                "captcha_img": f'<img src="{self.captcha}" />',
-            },
+            data_schema=STEP_CAPTCHA_DATA_SCHEMA,
+            description_placeholders={"captcha_img": f'<img src="{image}" />'},
         )
+
+
+class CannotConnect(exceptions.HomeAssistantError):
+    """Error to indicate we cannot connect."""
 
 
 class InvalidAuth(exceptions.HomeAssistantError):
     """Error to indicate there is invalid auth."""
-
-
-class CannotConnect(exceptions.HomeAssistantError):
-    """Error to indicate the Porsche login could not be completed."""

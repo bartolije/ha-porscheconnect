@@ -3,17 +3,22 @@
 from __future__ import annotations
 
 import copy
+from functools import partial
 from typing import TYPE_CHECKING
 
-from homeassistant.const import CONF_ACCESS_TOKEN
+from homeassistant.config_entries import ConfigEntryState
+from homeassistant.const import (
+    CONF_ACCESS_TOKEN,
+    CONF_EMAIL,
+    CONF_PASSWORD,
+    CONF_SCAN_INTERVAL,
+)
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
-from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.httpx_client import create_async_httpx_client
 from homeassistant.helpers.typing import ConfigType
-from homeassistant.util.hass_dict import HassKey
 from pyporscheconnectapi.account import PorscheConnectAccount
 from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -24,6 +29,7 @@ from .coordinator import (
     PorscheConnectDataUpdateCoordinator,
     async_save_token,
 )
+from .services import async_setup_services
 
 if TYPE_CHECKING:
     import httpx2
@@ -36,6 +42,12 @@ _UPSTREAM_KEY_RENAMES = {
     "intermediate_service_range": "intermediate_service_distance",
 }
 
+_VERSION_BEFORE_UNIQUE_EMAIL = 2
+
+# Platforms with one entity per car: their unique ID is the VIN alone. Older
+# releases appended the platform name, which the entity registry already knows.
+_SINGLE_ENTITY_PLATFORMS = ("climate", "lock")
+
 # This integration is configured exclusively through the UI config flow and has
 # no YAML configuration; declaring this satisfies the hassfest CONFIG_SCHEMA
 # check for integrations that implement async_setup.
@@ -44,46 +56,28 @@ CONFIG_SCHEMA = cv.config_entry_only_config_schema(DOMAIN)
 
 @callback
 def async_create_porsche_client(hass: HomeAssistant) -> httpx2.AsyncClient:
-    """Return an HTTP client for the Porsche API.
+    """Return an HTTP client for the Porsche API, for the caller to close.
 
-    The Porsche API returns zstd bodies that httpx2 (HA 2026.11+) cannot
-    decode, so the client must not advertise zstd. The header is set on the
-    client because create_async_httpx_client only merges headers= since 2026.2.
+    A client of its own, because the Auth0 session lives in its cookies. The
+    Porsche API returns zstd bodies that httpx2 (HA 2026.11+) cannot decode,
+    so the client must not advertise zstd.
     """
-    client = create_async_httpx_client(hass)
+    client = create_async_httpx_client(hass, auto_cleanup=False)
     client.headers["Accept-Encoding"] = "gzip, deflate"
     return client
 
 
-_ENTRY_CLIENTS: HassKey[dict[str, httpx2.AsyncClient]] = HassKey(
-    f"{DOMAIN}_entry_clients"
-)
+async def async_close_porsche_client(client: httpx2.AsyncClient) -> None:
+    """Close a client made by async_create_porsche_client.
 
-
-def _async_get_entry_client(hass: HomeAssistant, entry_id: str) -> httpx2.AsyncClient:
-    """Return the entry's client, created once per account.
-
-    HA only closes these clients at shutdown, so setup retries and reloads reuse
-    it. One per entry: the Auth0 session lives in the cookies, and a new setup
-    starts without the previous one, as a new client would.
+    Not `client.aclose()`: Home Assistant makes that attribute refuse to run on
+    every client it creates, also on those it leaves for the caller to close.
     """
-    clients = hass.data.setdefault(_ENTRY_CLIENTS, {})
-    if (client := clients.get(entry_id)) is None:
-        client = clients[entry_id] = async_create_porsche_client(hass)
-    client.cookies.clear()
-    return client
+    await type(client).aclose(client)
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the Porsche Connect integration (domain-level).
-
-    Services are domain-global, so they are registered exactly once here
-    rather than per-entry in async_setup_entry — registering per entry would
-    overwrite the same handler on every reload and leak references to the
-    previously-active coordinator.
-    """
-    from .services import async_setup_services
-
+    """Set up the Porsche Connect integration: its actions."""
     async_setup_services(hass)
     return True
 
@@ -91,12 +85,16 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 async def async_migrate_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-) -> bool:
+) -> None:
     """Migrate a config entry to the current schema.
 
     v1 → v2: drop the in-flight authentication secrets (captcha code, Auth0
     state, PKCE verifier) that older releases persisted alongside the token.
     They are single-use, so replaying them only breaks the next login.
+
+    v2 → v3: the email, lower-cased, is the unique ID. Entries of the original
+    integration kept the email as typed, or had no unique ID, so the same
+    account could be set up twice. The polling interval is no longer a setting.
     """
     if config_entry.version == 1:
         data = {
@@ -105,7 +103,25 @@ async def async_migrate_entry(
             if key not in TRANSIENT_AUTH_FIELDS
         }
         hass.config_entries.async_update_entry(config_entry, data=data, version=2)
-    return True
+
+    if config_entry.version == _VERSION_BEFORE_UNIQUE_EMAIL:
+        email = config_entry.data[CONF_EMAIL].strip().lower()
+        data = {
+            key: value
+            for key, value in config_entry.data.items()
+            if key != CONF_SCAN_INTERVAL
+        } | {CONF_EMAIL: email}
+        options = {
+            key: value
+            for key, value in config_entry.options.items()
+            if key != CONF_SCAN_INTERVAL
+        }
+        hass.config_entries.async_update_entry(
+            config_entry, data=data, options=options, version=3
+        )
+        # Two entries for one account may already exist: only one gets the ID.
+        if not hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, email):
+            hass.config_entries.async_update_entry(config_entry, unique_id=email)
 
 
 async def _async_migrate_entity_unique_ids(
@@ -120,69 +136,68 @@ async def _async_migrate_entity_unique_ids(
     Rewrite the registry in place so an upgrade, or a switch from upstream,
     reuses the existing entities instead of orphaning them as duplicates.
     """
-    prefixes = [
-        (f"{vehicle.data['name']}-", f"{vehicle.vin}-")
+    vins_by_name = {
+        vehicle.data["name"]: vehicle.vin
         for vehicle in vehicles
         if vehicle.data.get("name") and vehicle.vin
-    ]
-    if not prefixes:
-        return
+    }
     ent_reg = er.async_get(hass)
 
     @callback
     def _migrate(entity_entry: er.RegistryEntry) -> dict[str, str] | None:
-        for old_prefix, new_prefix in prefixes:
-            if entity_entry.unique_id.startswith(old_prefix):
-                key = entity_entry.unique_id[len(old_prefix) :]
-                new_unique_id = f"{new_prefix}{_UPSTREAM_KEY_RENAMES.get(key, key)}"
-                # An entity left over from an earlier install may already hold
-                # the target id: keep it, the old one stays an orphan.
-                if ent_reg.async_get_entity_id(
-                    entity_entry.domain, DOMAIN, new_unique_id
-                ):
-                    return None
-                return {"new_unique_id": new_unique_id}
-        return None
+        unique_id = entity_entry.unique_id
+        for name, vin in vins_by_name.items():
+            if unique_id.startswith(f"{name}-"):
+                key = unique_id[len(name) + 1 :]
+                unique_id = f"{vin}-{_UPSTREAM_KEY_RENAMES.get(key, key)}"
+                break
+        if entity_entry.domain in _SINGLE_ENTITY_PLATFORMS:
+            unique_id = unique_id.removesuffix(f"-{entity_entry.domain}")
+        # An entity left over from an earlier install may already hold the
+        # target id: keep it, the old one stays an orphan.
+        if unique_id == entity_entry.unique_id or ent_reg.async_get_entity_id(
+            entity_entry.domain, DOMAIN, unique_id
+        ):
+            return None
+        return {"new_unique_id": unique_id}
 
     await er.async_migrate_entries(hass, entry.entry_id, _migrate)
 
 
 async def async_setup_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
-) -> bool:
-    """Set up this integration using UI."""
-    connection = Connection(
-        entry.data.get("email"),
-        entry.data.get("password"),
-        async_client=_async_get_entry_client(hass, entry.entry_id),
-        token=entry.data.get(CONF_ACCESS_TOKEN, None),
-    )
+) -> None:
+    """Set up an account: log in, read its cars, create their entities."""
+    client = async_create_porsche_client(hass)
+    # Also runs when the setup fails, so no client outlives its entry.
+    entry.async_on_unload(partial(async_close_porsche_client, client))
 
     controller = PorscheConnectAccount(
-        connection=connection,
+        connection=Connection(
+            entry.data[CONF_EMAIL],
+            entry.data[CONF_PASSWORD],
+            async_client=client,
+            token=entry.data.get(CONF_ACCESS_TOKEN),
+        ),
     )
-
     coordinator = PorscheConnectDataUpdateCoordinator(
         hass,
         config_entry=entry,
         controller=controller,
     )
 
-    # The coordinator turns API errors into ConfigEntryAuthFailed (reauth) or
-    # UpdateFailed, which the first refresh raises as ConfigEntryNotReady.
+    # The coordinator turns API errors into ConfigEntryAuthFailed (reauth),
+    # ConfigEntryError, or UpdateFailed, which the first refresh raises as
+    # ConfigEntryNotReady.
     await coordinator.async_config_entry_first_refresh()
 
     entry.runtime_data = coordinator
 
-    # Migrate pre-VIN unique_ids before the platforms create entities, so an
-    # upgrade from an older version reuses existing entities instead of
-    # orphaning them as duplicates.
+    # Before the platforms create entities, so that an upgrade reuses the
+    # existing entities instead of orphaning them as duplicates.
     await _async_migrate_entity_unique_ids(hass, entry, coordinator.vehicles)
 
-    await hass.config_entries.async_forward_entry_setups(
-        entry,
-        list(PLATFORMS),
-    )
+    await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
 
     # Deep-copy so the persisted snapshot is decoupled from the live token the
     # coordinator keeps mutating in place — otherwise the change-detection in
@@ -190,60 +205,34 @@ async def async_setup_entry(
     # rotated tokens.
     async_save_token(hass, entry, copy.deepcopy(controller.token))
 
-    return True
-
 
 async def async_unload_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
-) -> bool:
+) -> None:
     """Unload a config entry.
 
-    The domain-wide services stay registered: they are set up once in
-    async_setup, and a reload (e.g. after reauth) does not register them again.
+    The actions stay registered: they belong to the integration, not the entry.
     """
-    return await hass.config_entries.async_unload_platforms(
-        entry,
-        list(PLATFORMS),
-    )
-
-
-async def async_remove_entry(
-    hass: HomeAssistant, entry: PorscheConnectConfigEntry
-) -> None:
-    """Forget the HTTP client and the repair issues of a deleted entry."""
-    hass.data.get(_ENTRY_CLIENTS, {}).pop(entry.entry_id, None)
-    # Issues are named after the car, not the entry: another account's issue
-    # removed here is raised again at its next refresh.
-    for domain, issue_id in list(ir.async_get(hass).issues):
-        if domain == DOMAIN:
-            ir.async_delete_issue(hass, DOMAIN, issue_id)
+    await hass.config_entries.async_unload_platforms_or_raise(entry, PLATFORMS)
 
 
 async def async_remove_config_entry_device(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    device_entry: dr.DeviceEntry,
+    device_entry: dr.AnyDeviceEntry,
 ) -> bool:
-    """Remove a device from a config entry.
-
-    Allowed when the device's VIN is no longer present in the account's
-    vehicle list (e.g. the car was sold, returned, or otherwise unpaired in
-    the Porsche app).
-    """
-    coordinator = getattr(config_entry, "runtime_data", None)
-    if coordinator is None:
-        # Entry not loaded: the account cannot be checked. A car still on it
-        # comes back at the next setup.
+    """Let the user remove the device of a car that is no longer on the account."""
+    if config_entry.state is not ConfigEntryState.LOADED:
+        # The account cannot be checked. A car still on it comes back at the
+        # next setup.
         return True
-    known_vins = {vehicle.vin for vehicle in coordinator.vehicles}
+    coordinator = config_entry.runtime_data
     device_vins = {
         identifier[1]
         for identifier in device_entry.identifiers
         if identifier[0] == DOMAIN
     }
-    # If none of the device's VINs are still active on the account, the user
-    # is free to remove it.
-    if not device_vins.isdisjoint(known_vins):
+    if not device_vins.isdisjoint(vehicle.vin for vehicle in coordinator.vehicles):
         return False
     for vin in device_vins:
         coordinator.async_forget_vehicle(vin)

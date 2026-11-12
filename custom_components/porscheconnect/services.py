@@ -16,6 +16,7 @@ from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from .const import DOMAIN
+from .coordinator import PorscheConnectConfigEntry
 
 LOGGER = logging.getLogger(__name__)
 
@@ -124,9 +125,10 @@ def _resolve_vehicle(
         if identifier[0] == DOMAIN
     }
 
-    vehicles: list[PorscheVehicle] = (
-        config_entry.runtime_data.vehicles
-        if config_entry is not None and config_entry.state is ConfigEntryState.LOADED
+    entry: PorscheConnectConfigEntry | None = config_entry
+    vehicles = (
+        entry.runtime_data.vehicles
+        if entry is not None and entry.state is ConfigEntryState.LOADED
         else []
     )
     for vehicle in vehicles:
@@ -220,18 +222,16 @@ def async_setup_services(hass: HomeAssistant) -> None:
                 },
             ) from ex
 
-    if not hass.services.has_service(DOMAIN, SERVICE_CLIMATISATION_START):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_CLIMATISATION_START,
-            climatisation_start,
-            schema=SERVICE_CLIMATISATION_START_SCHEMA,
-        )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CLIMATISATION_START,
+        climatisation_start,
+        schema=SERVICE_CLIMATISATION_START_SCHEMA,
+    )
 
-    if not hass.services.has_service(DOMAIN, SERVICE_CLIMATISATION_STOP):
-        hass.services.async_register(
-            DOMAIN,
-            SERVICE_CLIMATISATION_STOP,
-            climatisation_stop,
-            schema=SERVICE_VEHICLE_SCHEMA,
-        )
+    hass.services.async_register(
+        DOMAIN,
+        SERVICE_CLIMATISATION_STOP,
+        climatisation_stop,
+        schema=SERVICE_VEHICLE_SCHEMA,
+    )

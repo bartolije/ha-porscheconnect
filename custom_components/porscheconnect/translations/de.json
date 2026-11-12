@@ -4,7 +4,6 @@
       "already_configured": "Gerät ist bereits konfiguriert",
       "reauth_successful": "Erneute Authentifizierung war erfolgreich",
       "reconfigure_successful": "Neukonfiguration war erfolgreich",
-      "unique_id_mismatch": "Die E-Mail-Adresse stimmt nicht mit dem konfigurierten Porsche-Connect-Konto überein",
       "already_in_progress": "Die Konfiguration läuft bereits"
     },
     "error": {
@@ -33,7 +32,7 @@
           "captcha_code": "Die im Bild oben angezeigten Zeichen."
         }
       },
-      "change_password": {
+      "reconfigure": {
         "title": "Passwort ändern",
         "description": "Geben Sie das neue Passwort des Porsche-Kontos {email} ein.",
         "data": {
@@ -41,6 +40,16 @@
         },
         "data_description": {
           "password": "Das neue Passwort Ihres My-Porsche-Kontos."
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut anmelden",
+        "description": "Porsche akzeptiert die gespeicherte Anmeldung für {email} nicht mehr. Geben Sie das Passwort dieses Kontos ein.",
+        "data": {
+          "password": "Passwort"
+        },
+        "data_description": {
+          "password": "Das Passwort Ihres My-Porsche-Kontos."
         }
       }
     }
@@ -318,6 +327,12 @@
     },
     "update_timeout": {
       "message": "Porsche hat zu lange für die Antwort gebraucht."
+    },
+    "account_blocked": {
+      "message": "Porsche hat den Zugriff für dieses Konto gesperrt: {error}. Prüfen Sie das Konto in der My-Porsche-App und laden Sie die Integration neu."
+    },
+    "pin_code_invalid": {
+      "message": "Die PIN ist die vierstellige Sicherheits-PIN der My-Porsche-App."
     }
   },
   "services": {
@@ -365,7 +380,7 @@
   "issues": {
     "connect_inactive": {
       "title": "Kein aktiver Porsche-Connect-Vertrag für {vehicle}",
-      "description": "Porsche meldet keinen aktiven Porsche-Connect-Vertrag für {vehicle}, daher sind die meisten Entitäten nicht verfügbar. Verlängern Sie den Vertrag in der My-Porsche-App oder im Porsche Connect Store; die Entitäten kehren bei der nächsten Aktualisierung zurück."
+      "description": "Porsche meldet keinen aktiven Porsche-Connect-Vertrag für {vehicle}, daher können einige Daten fehlen oder veraltet sein. Verlängern Sie den Vertrag in der My-Porsche-App oder im Porsche Connect Store; die Entitäten kehren von selbst zurück, sobald er wieder aktiv ist."
     }
   }
 }

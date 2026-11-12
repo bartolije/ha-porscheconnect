@@ -7,6 +7,10 @@
 
 **Your Porsche, at home in Home Assistant.**
 
+[Porsche Connect](https://connect-store.porsche.com/) is the online service of
+Porsche cars: it is what the My Porsche app uses to show and control your car.
+This integration brings the same car into Home Assistant.
+
 See your car on your dashboard, next to your lights and your heating. Know at a
 glance whether it is locked, how far it can go and where it is parked. Warm the
 cabin before you leave, get a message when a door was left open, and let your
@@ -43,9 +47,11 @@ nothing to configure by hand. Available in seven languages.
   checks run every day to catch it before you do, and when Porsche wants a
   captcha or a new password, Home Assistant simply asks you.
 - **Built to Home Assistant's highest standards.** The integration follows the
-  official [quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
+  official [quality scale](https://contributors.home-assistant.io/core/quality-scale/)
   rule by rule ([how each rule is met](custom_components/porscheconnect/quality_scale.yaml)),
-  with more than 120 automated tests, and it is checked on a real car.
+  with more than 150 automated tests, and it is checked on a real car. Home Assistant does
+  not review custom integrations: this is the maintainer's own assessment, open
+  for anyone to check.
 
 ## Supported cars
 
@@ -69,7 +75,16 @@ supported.
 
 ## Installation
 
-You need Home Assistant 2026.11 or newer and [HACS](https://hacs.xyz).
+### Before you start
+
+- Home Assistant 2026.11 or newer, with [HACS](https://hacs.xyz).
+- An active **Porsche Connect** subscription for the car.
+- The car paired with your My Porsche account, in its PCM, with the pairing code
+  the My Porsche app shows.
+- A My Porsche account **without two-factor authentication**: it cannot sign in
+  from Home Assistant.
+
+### Steps
 
 1. Click the **Open in HACS** button above, or in HACS open **⋮ → Custom
    repositories** and add `https://github.com/bartolije/ha-porscheconnect` as an
@@ -100,18 +115,16 @@ Everything is set up in the Home Assistant UI.
 | -------- | ------------- | ----------------------------------------------------------------- |
 | Email    | Yes           | The email of your My Porsche account.                             |
 | Password | Yes           | The password of your My Porsche account.                          |
-| Captcha  | When prompted | Porsche sometimes shows a picture to copy when you first sign in. |
-
-Before you start, the car needs an active Porsche Connect subscription and must
-be paired in its PCM with the pairing code shown in the My Porsche app.
+| Captcha code | When prompted | Porsche sometimes shows a picture to copy when you first sign in. |
 
 **Unlocking** needs the 4-digit security PIN you chose in the Porsche app. Enter
 it once as the *default code* in the options of the lock entity. Locking does
 not need it.
 
 **Changed your password?** Open **Settings → Devices & services → My Porsche
-Connect → ⋮ → Reconfigure**. If Porsche ends your session, Home Assistant asks
-you to sign in again by itself.
+Connect → ⋮ → Reconfigure** and enter the new one. If Porsche ends your session,
+Home Assistant asks for your password again by itself. The account of an entry
+never changes: to use another account, add it as a new entry.
 
 There are no other settings.
 
@@ -136,58 +149,77 @@ Some entities are disabled by default to keep the device page readable. Enable
 them from the device page if you want them.
 
 <details>
-<summary>Full list of entities and when each one is created</summary>
+<summary>Every entity, what it shows and on which cars</summary>
 
-| Platform        | Entity / key                                                       | Capability gate                                          |
-| --------------- | ------------------------------------------------------------------ | -------------------------------------------------------- |
-| `sensor`        | `state_of_charge`                                                  | `has_electric_drivetrain`                                |
-| `sensor`        | `charging_target`                                                  | `has_electric_drivetrain`                                |
-| `sensor`        | `charging_status`                                                  | `has_electric_drivetrain`                                |
-| `sensor`        | `charging_rate` (disabled by default)                              | `has_electric_drivetrain`                                |
-| `sensor`        | `charging_power`                                                   | `has_electric_drivetrain`                                |
-| `sensor`        | `charging_finished`                                                | `has_electric_drivetrain`                                |
-| `sensor`        | `remaining_range_electric`                                         | `has_electric_drivetrain`                                |
-| `sensor`        | `last_update` (when the car last sent its data, diagnostic)        | `GLOBAL_TIMESTAMP` reported                              |
-| `sensor`        | `connect_contract_end` (diagnostic)                                | `CONNECT_CONTRACT` reported                              |
-| `sensor`        | `monthly_distance`, `monthly_driving_time`, `monthly_trips` ¹      | `TRIP_STATISTICS_MONTHLY_REPORT` reported                |
-| `sensor`        | `monthly_fuel_consumption`, `monthly_electric_consumption` ¹       | the matching field reported                              |
-| `sensor`        | `battery_energy_status`, `battery_temperature` (diagnostic) ¹      | `BEM_LEVEL`, `BATTERY_CONDITION` reported                |
-| `sensor`        | `charging_session_energy` ¹                                        | `CHARGING_SESSION` reported                              |
-| `sensor`        | `mileage`                                                          | `has_porsche_connect` (default)                          |
-| `sensor`        | `remaining_range`                                                  | `has_ice_drivetrain`                                     |
-| `sensor`        | `fuel_level`                                                       | `has_ice_drivetrain`                                     |
-| `sensor`        | `fuel_reserve` (diagnostic, disabled by default)                   | `FUEL_RESERVE` reported                                  |
-| `sensor`        | `tire_pressure_front_left`, `…_front_right`, `…_rear_left`,        | `has_tire_pressure_monitoring`                           |
-| `sensor`        | `…_rear_right`: deviation in bar (diagnostic, disabled)            |                                                          |
-| `sensor`        | `main_service_distance`, `main_service_time` (diagnostic)          | the matching service measurement reported                |
-| `sensor`        | `oil_service_*`, `intermediate_service_*` (diagnostic, disabled)   | the matching service measurement reported                |
-| `binary_sensor` | `parking_brake`                                                    | `PARKING_BRAKE` reported                                 |
-| `binary_sensor` | `parking_light`                                                    | `PARKING_LIGHT` reported                                 |
-| `binary_sensor` | `privacy_mode` (diagnostic)                                        | `has_porsche_connect`                                    |
-| `binary_sensor` | `remote_access` (diagnostic, disabled by default)                  | `REMOTE_ACCESS_AUTHORIZATION` reported                   |
-| `binary_sensor` | `doors_and_lids`                                                   | `has_porsche_connect`                                    |
-| `binary_sensor` | `door_*`, `window_*`, `lid_front`, `lid_rear`, `sunroof`,          | the matching `OPEN_STATE_*` measurement reported         |
-| `binary_sensor` | `sunroof_rear`, `convertible_top`, `charge_flap_left/right`        |                                                          |
-| `binary_sensor` | `spoiler`, `service_flap` (diagnostic, disabled by default)        | the matching `OPEN_STATE_*` measurement reported         |
-| `binary_sensor` | `tire_pressure_status`                                             | `has_tire_pressure_monitoring`                           |
-| `binary_sensor` | `instrument_cluster_alerts` (oil level, tire pressure) ¹           | `INSTRUMENT_CLUSTER_ALERTS` reported                     |
-| `device_tracker`| Vehicle location                                                   | privacy mode off                                         |
-| `image`         | `front_view`, `side_view`, `rear_view`, `rear_top_view`, `top_view`| Pictures returned by the API                             |
-| `lock`          | Door lock                                                          | every vehicle (unlock needs the S-PIN)                   |
-| `climate`       | Remote climatisation (target read from the car, `remaining_time`)  | `has_remote_climatisation` and `has_remote_services`     |
-| `switch`        | `climatise` (disabled by default)                                  | `has_remote_climatisation` and `has_remote_services`     |
-| `switch`        | `direct_charging`                                                  | `has_direct_charge` and `has_remote_services`            |
-| `number`        | `target_soc` (25–100 %, step 5)                                    | `has_electric_drivetrain` and `has_remote_services`      |
-| `button`        | `flash_indicators`                                                 | `has_remote_services`                                    |
-| `button`        | `honk_and_flash_indicators`                                        | `has_remote_services`                                    |
-| `button`        | `get_current_overview`                                             | `has_remote_services` (forces a fresh pull from the car) |
+**Sensors**
+
+| Entity | What it shows | Available on |
+| ------ | ------------- | ------------ |
+| Mileage | Total distance driven | Every car |
+| Remaining range | Range left on fuel | Petrol and plug-in hybrid |
+| Fuel level | Fuel left, in percent | Petrol and plug-in hybrid |
+| Fuel reserve ² | Reserve level reported by the car, in percent | Cars that report it |
+| State of charge | Battery level, in percent | Electric and plug-in hybrid |
+| Remaining range electric | Range left on the battery | Electric and plug-in hybrid |
+| Charging status | Charging, completed, not plugged, error… | Electric and plug-in hybrid |
+| Charging power | Power the car charges with, in kW | Electric and plug-in hybrid |
+| Charging rate ² | Range gained per hour of charging | Electric and plug-in hybrid |
+| Charging ends | Time the charge is expected to end | Electric and plug-in hybrid |
+| Charging target | Battery level the charge stops at | Electric and plug-in hybrid |
+| Energy charged in the last session ¹ | Energy of the last charge, in kWh | Cars that report it |
+| Battery energy status ¹ | Normal, warning or critical | Cars that report it |
+| Battery temperature ¹ | Temperature of the battery | Cars that report it |
+| Distance to service, Time to service | When the next service is due | Cars that report it |
+| Distance and time to oil service ² | When the next oil change is due | Cars that report it |
+| Distance and time to intermediate service ² | When the intermediate service is due | Cars that report it |
+| Tire pressure deviation (per tire) ² | Difference to the recommended pressure, in bar | Cars with tire pressure monitoring |
+| Monthly report distance, driving time, trips ¹ | Totals of the current month | Cars that report it |
+| Monthly report fuel and electric consumption ¹ | Average consumption of the month | Cars that report it |
+| Porsche Connect contract end | Date the subscription ends | Cars that report it |
+| Last update from the car | When the car last sent its data | Cars that report it |
+
+**Binary sensors**
+
+| Entity | What it shows | Available on |
+| ------ | ------------- | ------------ |
+| Doors and lids | On when any door, window or lid is open | Every car |
+| Door, Window (each one), Frunk, Trunk | Open or closed | Cars that report that part |
+| Sunroof, Rear sunroof, Convertible top | Open or closed | Cars that have one |
+| Charge flap (left, right) | Open or closed | Cars that have one |
+| Active spoiler ², Service flap ² | Open or closed | Cars that have one |
+| Parking brake | On when the parking brake is set | Cars that report it |
+| Parking light | On when the parking light is on | Cars that report it |
+| Tire pressure status | A problem with the pressure of a tire | Cars with tire pressure monitoring |
+| Instrument cluster alerts ¹ | A warning on the dashboard (oil level, tire pressure) | Cars that report it |
+| Privacy mode | On when the driver enabled privacy in the car | Every car |
+| Remote access ² | Whether remote commands are allowed | Cars that report it |
+
+**Controls**
+
+| Entity | What it does | Available on |
+| ------ | ------------ | ------------ |
+| Door lock (`lock`) | Locks and unlocks the car; unlocking needs your PIN | Every car |
+| The car itself (`climate`) | Starts and stops the climatisation, with a target temperature | Electric and plug-in hybrid with remote services |
+| Remote climatisation ² (`switch`) | Same command as the climate entity, without a temperature | Electric and plug-in hybrid with remote services |
+| Direct charging (`switch`) | Charges now, ignoring the timers | Cars with direct charging |
+| Target state of charge (`number`) | Sets the level the charge stops at, 25 to 100 % | Electric and plug-in hybrid with remote services |
+| Flash indicators (`button`) | Flashes the indicators | Cars with remote services |
+| Honk and flash indicators (`button`) | Sounds the horn and flashes | Cars with remote services |
+| Get current vehicle information (`button`) | Asks the car for fresh data | Cars with remote services |
+
+**Position and pictures**
+
+| Entity | What it shows | Available on |
+| ------ | ------------- | ------------ |
+| The car itself (`device_tracker`) | The car on the map, with its heading | Every car, unless privacy mode is on |
+| View from the side | A picture of your car | Every car |
+| View from the front, the rear, above, diagonally from above ² | Other pictures of your car | Every car |
 
 ¹ Built from the data of the My Porsche app and not yet seen on a car. If your
 car shows one of them, please compare it with the app and open an issue with the
 diagnostics attached (device page → ⋮ → Download diagnostics).
 
-Entities are created from what the car reports when it is first seen. If your
-car starts reporting something new later, reload the integration.
+² Disabled by default. Enable it from the device page.
 
 </details>
 
@@ -337,31 +369,119 @@ Porsche limits how often it can be asked, so there is no setting to go faster.
   right away.
 - A car added to your account appears at the next update. A car that left it is
   removed after two updates without it, about an hour.
-- Pictures are fetched once, when the integration starts.
+- Pictures are fetched when the integration starts, then once a day until
+  Porsche has some for your car.
 
 ## Troubleshooting
 
-**A captcha is asked at sign-in.** Copy the characters and submit. If it comes
-back, start again: each picture can be used once.
+<details>
+<summary>"Invalid authentication" when signing in</summary>
 
-**The car is there but most entities are missing.** The car is probably not
-paired in its PCM. Pair it with the code shown in the My Porsche app, then
-reload the integration.
+**What you see.** The form comes back with *Invalid authentication*.
 
-**The car is missing.** Check that the model has Porsche Connect and that the
-subscription is active: Home Assistant shows a lapsed subscription under
-**Settings → Repairs**. A car that left your account is removed after about an
-hour and comes back if you add it again.
+**Why.** Porsche refused the email or the password, or the account uses
+two-factor authentication, which cannot sign in from Home Assistant.
 
-**Home Assistant asks me to sign in again.** Porsche ended the session. Enter
-your password, and the captcha if one is shown.
+**What to do.** Check that the same email and password work in the My Porsche
+app, then try again.
 
-**Lock works, unlock does not.** Set your 4-digit security PIN as the *default
-code* in the options of the lock entity.
+</details>
 
-**Reporting a problem.** Download the diagnostics from the device page (⋮ →
-Download diagnostics): your password and position are removed, your email and VIN masked. For
-more detail, enable debug logs:
+<details>
+<summary>"Failed to connect" or "Unexpected error" when signing in</summary>
+
+**What you see.** The form comes back with *Failed to connect* or *Unexpected
+error*.
+
+**Why.** Porsche did not answer, or answered something the integration does not
+understand. Porsche also limits the number of sign-ins.
+
+**What to do.** Wait a few minutes and try again. If it lasts, open an issue
+with the log: *Unexpected error* writes the details there.
+
+</details>
+
+<details>
+<summary>A captcha is asked, again and again</summary>
+
+**What you see.** A picture to copy when signing in, sometimes several times.
+
+**Why.** Porsche asks for it after several sign-ins, and each picture can be
+used once.
+
+**What to do.** Copy the characters and submit. If the form comes back, enter
+your password again: a new picture follows.
+
+</details>
+
+<details>
+<summary>The car is there but most entities are missing</summary>
+
+**What you see.** The device exists with only a few entities.
+
+**Why.** The car is not paired in its PCM, or its Porsche Connect contract is
+not active. In the second case Home Assistant says so under **Settings →
+Repairs**.
+
+**What to do.** Pair the car with the code shown in the My Porsche app, or
+renew the contract. For a pairing, reload the integration afterwards; after a
+renewal, the entities come back by themselves.
+
+</details>
+
+<details>
+<summary>A car is missing, or disappeared</summary>
+
+**What you see.** A car of yours has no device, or its device is gone.
+
+**Why.** The model has no Porsche Connect, or the car is no longer on your My
+Porsche account. A car that left the account is removed after about an hour.
+
+**What to do.** Check the car in the My Porsche app. Once it is on the account
+again, it comes back at the next update.
+
+</details>
+
+<details>
+<summary>Home Assistant asks me to sign in again</summary>
+
+**What you see.** A notification asking for the password of the account.
+
+**Why.** Porsche ended the session, or the password changed.
+
+**What to do.** Enter your password, and the captcha if one is shown.
+
+</details>
+
+<details>
+<summary>The integration does not start: access blocked</summary>
+
+**What you see.** The entry is in error with *Porsche has blocked access for
+this account*.
+
+**Why.** The account is locked, or mobile access is disabled for it.
+
+**What to do.** Sign in to the My Porsche app to lift it, then reload the
+integration.
+
+</details>
+
+<details>
+<summary>Lock works, unlock does not</summary>
+
+**What you see.** Unlocking fails, or says the PIN is missing or invalid.
+
+**Why.** Unlocking needs the 4-digit security PIN of the Porsche app.
+
+**What to do.** Set it as the *default code* in the options of the lock entity.
+
+</details>
+
+### Reporting a problem
+
+Download the diagnostics from the device page (⋮ → Download diagnostics): your
+email, password, position and the name of your car are removed, and the VIN is
+masked. For more detail, enable debug logs:
 
 ```yaml
 logger:
@@ -383,12 +503,15 @@ remove it before posting.
 - On some model years, Porsche does not keep a charge target set from outside
   its own app.
 - A captcha may be asked at sign-in, more often after several attempts.
+- Entities are created from what the car reports when it is first seen. If it
+  starts reporting something new later, reload the integration.
 
 ## Removal
 
 1. Go to **Settings → Devices & services → My Porsche Connect**.
 2. Click **⋮** on the entry, choose **Delete** and confirm. The device and its
-   entities disappear.
+   entities disappear. Nothing else is left: the integration stores nothing at
+   Porsche, and your My Porsche account is untouched.
 3. To uninstall completely: in HACS, open **My Porsche Connect → ⋮ → Remove**,
    then restart Home Assistant.
 

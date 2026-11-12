@@ -16,7 +16,6 @@ from pyporscheconnectapi.exceptions import (
 )
 from pytest_homeassistant.common import MockConfigEntry
 
-from custom_components.porscheconnect import _async_get_entry_client
 from custom_components.porscheconnect.const import (
     CONF_CAPTCHA_CODE,
     CONF_CODE_VERIFIER,
@@ -67,10 +66,10 @@ async def test_async_setup_entry_client_does_not_accept_zstd(
     client = connection_cls.call_args.kwargs["async_client"]
     assert client is not get_async_client(hass)
     assert client.headers["Accept-Encoding"] == "gzip, deflate"
+    assert not client.is_closed
 
-    # HA only closes these clients at shutdown: a reload must reuse the entry's
-    # client, without the previous Auth0 session cookies.
-    client.cookies.set("auth0", "previous-session")
+    # The client belongs to the entry: unloading closes it, and the next setup
+    # starts with a new one, without the previous Auth0 session.
     with patch(
         "custom_components.porscheconnect.Connection",
         return_value=mock_connection_cls.instance,
@@ -78,10 +77,28 @@ async def test_async_setup_entry_client_does_not_accept_zstd(
         assert await hass.config_entries.async_reload(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
-    assert connection_cls.call_args.kwargs["async_client"] is client
-    assert not client.cookies
-    # A second account never shares the first one's Auth0 cookies.
-    assert _async_get_entry_client(hass, "another_entry") is not client
+    assert client.is_closed
+    assert connection_cls.call_args.kwargs["async_client"] is not client
+
+
+async def test_failed_setup_closes_its_http_client(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_account,
+    mock_account_cls,
+) -> None:
+    """Home Assistant retries a failed setup: no client may pile up."""
+    mock_account.get_vehicles.side_effect = PorscheExceptionError("down")
+    mock_config_entry.add_to_hass(hass)
+    with patch(
+        "custom_components.porscheconnect.Connection", return_value=MagicMock()
+    ) as connection_cls:
+        assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
+        await hass.async_block_till_done()
+
+    assert mock_config_entry.state is ConfigEntryState.SETUP_RETRY
+    assert connection_cls.call_args.kwargs["async_client"].is_closed
+
 
 async def test_async_setup_entry_auth_failure(
     hass: HomeAssistant,
@@ -276,7 +293,7 @@ async def test_migrate_entry_drops_transient_auth_fields(
     assert await hass.config_entries.async_setup(entry.entry_id)
     await hass.async_block_till_done()
 
-    assert entry.version == 2
+    assert entry.version == 3
     assert TRANSIENT_AUTH_FIELDS.isdisjoint(entry.data)
     assert entry.data[CONF_ACCESS_TOKEN] == {"access_token": "abc123", "expires_in": 3600}
 
@@ -317,3 +334,105 @@ def test_library_pin_is_the_same_everywhere() -> None:
         if line.startswith("pyporscheconnectapi")
     )
     assert manifest["requirements"] == [pinned]
+
+
+@pytest.mark.parametrize("unique_id", ["Tester@Example.com", None])
+async def test_migrate_entry_makes_the_lower_cased_email_the_unique_id(
+    hass: HomeAssistant,
+    mock_account,
+    mock_connection_cls,
+    mock_account_cls,
+    unique_id: str | None,
+) -> None:
+    """Entries of the original integration: email as typed, or no unique ID.
+
+    The config flow could not recognise them, so the account could be added a
+    second time.
+    """
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id=unique_id,
+        version=2,
+        data={
+            CONF_EMAIL: " Tester@Example.com",
+            CONF_PASSWORD: "hunter2",
+            "scan_interval": 60,
+        },
+        options={"scan_interval": 30},
+    )
+    entry.add_to_hass(hass)
+
+    assert await hass.config_entries.async_setup(entry.entry_id)
+    await hass.async_block_till_done()
+
+    assert entry.version == 3
+    assert entry.unique_id == "tester@example.com"
+    assert entry.data[CONF_EMAIL] == "tester@example.com"
+    # The polling interval is not a setting: a left-over one is dropped.
+    assert "scan_interval" not in entry.data
+    assert not entry.options
+    assert entry.runtime_data.update_interval.total_seconds() == 1920
+
+    # The account is now recognised: a second setup is refused.
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": "user"}
+    )
+    result = await hass.config_entries.flow.async_configure(
+        result["flow_id"],
+        user_input={CONF_EMAIL: "TESTER@example.com", CONF_PASSWORD: "x"},
+    )
+    assert result["reason"] == "already_configured"
+
+
+async def test_migrate_entry_keeps_a_unique_id_that_is_already_taken(
+    hass: HomeAssistant,
+    mock_account,
+    mock_connection_cls,
+    mock_account_cls,
+    mock_config_entry: MockConfigEntry,
+) -> None:
+    """Two entries for one account may already exist: only one holds the ID."""
+    mock_config_entry.add_to_hass(hass)
+    duplicate = MockConfigEntry(
+        domain=DOMAIN,
+        unique_id="Tester@Example.com",
+        version=2,
+        data={CONF_EMAIL: "Tester@Example.com", CONF_PASSWORD: "hunter2"},
+    )
+    duplicate.add_to_hass(hass)
+
+    await hass.config_entries.async_setup(duplicate.entry_id)
+    await hass.async_block_till_done()
+
+    assert duplicate.version == 3
+    assert duplicate.unique_id == "Tester@Example.com"
+    assert mock_config_entry.unique_id == "tester@example.com"
+
+
+async def test_lock_and_climate_unique_ids_lose_the_platform_name(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """Older releases used `<vin>-lock`: the entities are kept, not duplicated."""
+    from homeassistant.helpers import entity_registry as er
+
+    mock_config_entry.add_to_hass(hass)
+    registry = er.async_get(hass)
+    vin = mock_vehicle.vin
+    old = {
+        domain: registry.async_get_or_create(
+            domain, DOMAIN, f"{vin}-{domain}", config_entry=mock_config_entry
+        ).entity_id
+        for domain in ("lock", "climate")
+    }
+
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+
+    for domain, entity_id in old.items():
+        assert registry.async_get(entity_id).unique_id == vin
+        assert registry.async_get_entity_id(domain, DOMAIN, vin) == entity_id
+        assert registry.async_get_entity_id(domain, DOMAIN, f"{vin}-{domain}") is None

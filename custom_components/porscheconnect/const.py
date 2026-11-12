@@ -1,5 +1,7 @@
 """Constants for the Porsche Connect integration."""
 
+from homeassistant.const import Platform
+
 DOMAIN = "porscheconnect"
 DEFAULT_SCAN_INTERVAL = 1920
 
@@ -14,13 +16,13 @@ TRANSIENT_AUTH_FIELDS = frozenset(
 )
 
 PLATFORMS = [
-    "sensor",
-    "binary_sensor",
-    "device_tracker",
-    "number",
-    "switch",
-    "button",
-    "lock",
-    "image",
-    "climate",
+    Platform.BINARY_SENSOR,
+    Platform.BUTTON,
+    Platform.CLIMATE,
+    Platform.DEVICE_TRACKER,
+    Platform.IMAGE,
+    Platform.LOCK,
+    Platform.NUMBER,
+    Platform.SENSOR,
+    Platform.SWITCH,
 ]

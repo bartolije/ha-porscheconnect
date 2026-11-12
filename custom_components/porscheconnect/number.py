@@ -13,9 +13,10 @@ from homeassistant.components.number import (
     NumberEntityDescription,
     NumberMode,
 )
+from homeassistant.const import PERCENTAGE
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
@@ -49,7 +50,7 @@ NUMBER_TYPES: list[PorscheNumberEntityDescription] = [
         is_available=lambda v: v.has_electric_drivetrain and v.has_remote_services,
         native_max_value=100.0,
         native_min_value=25.0,
-        native_unit_of_measurement="%",
+        native_unit_of_measurement=PERCENTAGE,
         native_step=5.0,
         mode=NumberMode.SLIDER,
         value_fn=lambda v: v.charging_target,
@@ -63,7 +64,7 @@ NUMBER_TYPES: list[PorscheNumberEntityDescription] = [
 async def async_setup_entry(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    async_add_entities: AddConfigEntryEntitiesCallback,
 ) -> None:
     """Set up the Porsche number from config entry."""
     coordinator: PorscheConnectDataUpdateCoordinator = config_entry.runtime_data
