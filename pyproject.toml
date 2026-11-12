@@ -15,6 +15,11 @@ addopts = "-p no:respx"
 pythonpath = ["."]
 testpaths = ["tests"]
 
+[tool.coverage.report]
+show_missing = true
+# The single threshold: the quality scale asks for more than 95 %.
+fail_under = 95
+
 [tool.mypy]
 python_version = "3.14"
 strict = true

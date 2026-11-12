@@ -330,3 +330,172 @@ async def test_captcha_step_error_restarts_login(hass: HomeAssistant) -> None:
     last = connection_cls.call_args.kwargs
     assert last[CONF_CAPTCHA_CODE] is None
     assert last[CONF_OAUTH_STATE] is None
+
+
+def _existing_entry(hass: HomeAssistant) -> MockConfigEntry:
+    entry = MockConfigEntry(
+        domain=DOMAIN,
+        title=TEST_EMAIL,
+        unique_id=TEST_EMAIL.lower(),
+        data={
+            CONF_EMAIL: TEST_EMAIL,
+            CONF_PASSWORD: "old-password",
+            CONF_ACCESS_TOKEN: {"access_token": "old"},
+        },
+    )
+    entry.add_to_hass(hass)
+    return entry
+
+
+def _captcha_connection(payload: str = "abc") -> MagicMock:
+    """A connection whose login is interrupted by a captcha."""
+    err = PorscheCaptchaRequiredError("captcha please")
+    err.captcha = "data:image/png;base64," + payload
+    err.state = "state-token"
+    err.code_verifier = "verifier"
+    instance = MagicMock()
+    instance.get_token = AsyncMock(side_effect=err)
+    return instance
+
+
+async def test_reconfigure_flow_changes_password(hass: HomeAssistant) -> None:
+    """Reconfigure asks for the new password only and keeps the account."""
+    entry = _existing_entry(hass)
+
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={
+            "source": config_entries.SOURCE_RECONFIGURE,
+            "entry_id": entry.entry_id,
+        },
+    )
+    assert result["type"] == FlowResultType.FORM
+    assert result["step_id"] == "change_password"
+    assert result["description_placeholders"] == {CONF_EMAIL: TEST_EMAIL}
+
+    new_token = {"access_token": "fresh", "expires_in": 3600}
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(new_token),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_PASSWORD: "new-password"},
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "reconfigure_successful"
+    assert entry.data[CONF_EMAIL] == TEST_EMAIL
+    assert entry.data[CONF_PASSWORD] == "new-password"
+    assert entry.data[CONF_ACCESS_TOKEN] == new_token
+
+
+@pytest.mark.parametrize(
+    ("source", "reason"),
+    [
+        (config_entries.SOURCE_REAUTH, "reauth_successful"),
+        (config_entries.SOURCE_RECONFIGURE, "reconfigure_successful"),
+    ],
+)
+async def test_existing_entry_updated_after_two_captchas(
+    hass: HomeAssistant, source: str, reason: str
+) -> None:
+    """Reauth and reconfigure also finish through the captcha step, even when
+    Porsche asks for a second captcha, and tolerate a captcha that is no SVG.
+    """
+    entry = _existing_entry(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": source, "entry_id": entry.entry_id},
+        data=dict(entry.data),
+    )
+
+    new_token = {"access_token": "fresh", "expires_in": 3600}
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        side_effect=[
+            _captcha_connection(),
+            _captcha_connection("def"),
+            _connection_with_token(new_token),
+        ],
+    ):
+        first_input = (
+            {CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: "new-password"}
+            if source == config_entries.SOURCE_REAUTH
+            else {CONF_PASSWORD: "new-password"}
+        )
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input=first_input
+        )
+        assert result["step_id"] == "captcha"
+        # Not base64: the image source is passed through untouched.
+        assert "base64,abc" in result["description_placeholders"]["captcha_img"]
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input={CONF_CAPTCHA_CODE: "ONE"}
+        )
+        assert result["step_id"] == "captcha"
+        assert "base64,def" in result["description_placeholders"]["captcha_img"]
+
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"], user_input={CONF_CAPTCHA_CODE: "TWO"}
+        )
+        await hass.async_block_till_done()
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == reason
+    assert entry.data[CONF_PASSWORD] == "new-password"
+    assert entry.data[CONF_ACCESS_TOKEN] == new_token
+    assert TRANSIENT_AUTH_FIELDS.isdisjoint(entry.data)
+
+
+async def test_reauth_with_another_account_is_refused(hass: HomeAssistant) -> None:
+    """Reauth must not silently turn the entry into a different account."""
+    entry = _existing_entry(hass)
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN,
+        context={"source": config_entries.SOURCE_REAUTH, "entry_id": entry.entry_id},
+        data=dict(entry.data),
+    )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        return_value=_connection_with_token(),
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: "someone@example.com", CONF_PASSWORD: "x"},
+        )
+
+    assert result["type"] == FlowResultType.ABORT
+    assert result["reason"] == "unique_id_mismatch"
+    assert entry.data[CONF_PASSWORD] == "old-password"
+
+
+@pytest.mark.parametrize(
+    ("connection", "error"),
+    [
+        (PorscheExceptionError("bad input"), "invalid_auth"),
+        (_connection_with_token(), "cannot_connect"),
+    ],
+)
+async def test_user_step_reports_other_login_failures(
+    hass: HomeAssistant, connection, error: str
+) -> None:
+    """A refused connection and an unexpected error both come back as a form."""
+    if error == "cannot_connect":
+        connection.get_token = AsyncMock(side_effect=RuntimeError("boom"))
+    result = await hass.config_entries.flow.async_init(
+        DOMAIN, context={"source": config_entries.SOURCE_USER}
+    )
+    with patch(
+        "custom_components.porscheconnect.config_flow.Connection",
+        side_effect=[connection],
+    ):
+        result = await hass.config_entries.flow.async_configure(
+            result["flow_id"],
+            user_input={CONF_EMAIL: TEST_EMAIL, CONF_PASSWORD: TEST_PASSWORD},
+        )
+
+    assert result["type"] == FlowResultType.FORM
+    assert result["errors"] == {"base": error}

@@ -46,7 +46,16 @@ def _make_vehicle() -> SimpleNamespace:
     vehicle.has_remote_services = True
     vehicle.has_tire_pressure_monitoring = True
     vehicle.has_porsche_connect = True
+    vehicle.has_direct_charge = True
     vehicle.privacy_mode = False
+    vehicle.vehicle_locked = True
+    vehicle.vehicle_closed = True
+    vehicle.doors_and_lids = {}
+    vehicle.tire_pressures = {}
+    vehicle.tire_pressure_status = True
+    vehicle.charging_target = 80
+    vehicle.remote_climatise_on = False
+    vehicle.direct_charge_on = False
     vehicle.picture_locations = {}
     vehicle.seat_heating = None
     vehicle.climatisation_target_temperature = None
@@ -63,6 +72,7 @@ def _make_vehicle() -> SimpleNamespace:
     vehicle.get_picture_locations = AsyncMock(return_value=None)
     vehicle.remote_services = SimpleNamespace(
         climatise_on=AsyncMock(return_value=None),
+        climatise_off=AsyncMock(return_value=None),
     )
     return vehicle
 

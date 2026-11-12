@@ -81,5 +81,4 @@ jobs:
             -n auto \
             -p no:sugar \
             --cov=custom_components.porscheconnect \
-            --cov-fail-under=88 \
             tests
