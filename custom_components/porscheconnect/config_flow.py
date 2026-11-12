@@ -112,7 +112,10 @@ async def async_login(
 class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Porsche Connect."""
 
-    VERSION = 3
+    VERSION = 2
+    # A minor version: the data stays readable by the previous release, so that
+    # going back to it keeps the entry working.
+    MINOR_VERSION = 2
 
     def __init__(self) -> None:
         """Initialise the flow."""

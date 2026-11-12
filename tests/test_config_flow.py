@@ -63,7 +63,8 @@ def _shown_captcha(result: dict) -> str:
 def _existing_entry(hass: HomeAssistant) -> MockConfigEntry:
     entry = MockConfigEntry(
         domain=DOMAIN,
-        version=3,
+        version=2,
+        minor_version=2,
         title=TEST_EMAIL,
         unique_id=TEST_EMAIL,
         data={
@@ -110,7 +111,8 @@ async def test_user_flow_creates_the_entry(hass: HomeAssistant) -> None:
         CONF_PASSWORD: "pw",
         CONF_ACCESS_TOKEN: NEW_TOKEN,
     }
-    assert result["result"].version == 3
+    assert result["result"].version == 2
+    assert result["result"].minor_version == 2
     # A first login carries no captcha data.
     assert connection.call_args.kwargs["email"] == TEST_EMAIL
     assert connection.call_args.kwargs["captcha_code"] is None

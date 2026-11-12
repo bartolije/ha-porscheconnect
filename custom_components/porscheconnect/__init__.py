@@ -42,7 +42,7 @@ _UPSTREAM_KEY_RENAMES = {
     "intermediate_service_range": "intermediate_service_distance",
 }
 
-_VERSION_BEFORE_UNIQUE_EMAIL = 2
+_MINOR_VERSION = 2
 
 # Platforms with one entity per car: their unique ID is the VIN alone. Older
 # releases appended the platform name, which the entity registry already knows.
@@ -92,7 +92,7 @@ async def async_migrate_entry(
     state, PKCE verifier) that older releases persisted alongside the token.
     They are single-use, so replaying them only breaks the next login.
 
-    v2 → v3: the email, lower-cased, is the unique ID. Entries of the original
+    v2.1 → v2.2: the email, lower-cased, is the unique ID. Entries of the original
     integration kept the email as typed, or had no unique ID, so the same
     account could be set up twice. The polling interval is no longer a setting.
     """
@@ -102,9 +102,11 @@ async def async_migrate_entry(
             for key, value in config_entry.data.items()
             if key not in TRANSIENT_AUTH_FIELDS
         }
-        hass.config_entries.async_update_entry(config_entry, data=data, version=2)
+        hass.config_entries.async_update_entry(
+            config_entry, data=data, version=2, minor_version=1
+        )
 
-    if config_entry.version == _VERSION_BEFORE_UNIQUE_EMAIL:
+    if config_entry.minor_version < _MINOR_VERSION:
         email = config_entry.data[CONF_EMAIL].strip().lower()
         data = {
             key: value
@@ -117,7 +119,7 @@ async def async_migrate_entry(
             if key != CONF_SCAN_INTERVAL
         }
         hass.config_entries.async_update_entry(
-            config_entry, data=data, options=options, version=3
+            config_entry, data=data, options=options, minor_version=_MINOR_VERSION
         )
         # Two entries for one account may already exist: only one gets the ID.
         if not hass.config_entries.async_entry_for_domain_unique_id(DOMAIN, email):
