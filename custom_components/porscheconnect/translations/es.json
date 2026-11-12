@@ -4,7 +4,8 @@
       "already_configured": "El dispositivo ya está configurado",
       "reauth_successful": "La reautenticación se realizó correctamente",
       "reconfigure_successful": "La reconfiguración se realizó correctamente",
-      "unique_id_mismatch": "La dirección de correo electrónico no coincide con la cuenta de Porsche Connect configurada"
+      "unique_id_mismatch": "La dirección de correo electrónico no coincide con la cuenta de Porsche Connect configurada",
+      "already_in_progress": "La configuración ya está en curso"
     },
     "error": {
       "cannot_connect": "Error al conectar",
@@ -16,6 +17,10 @@
         "data": {
           "password": "Contraseña",
           "email": "Correo electrónico"
+        },
+        "data_description": {
+          "email": "El correo electrónico de su cuenta My Porsche.",
+          "password": "La contraseña de su cuenta My Porsche."
         }
       },
       "captcha": {
@@ -23,6 +28,9 @@
         "description": "{captcha_img}",
         "data": {
           "captcha_code": "Código captcha"
+        },
+        "data_description": {
+          "captcha_code": "Los caracteres que aparecen en la imagen de arriba."
         }
       },
       "change_password": {
@@ -30,6 +38,9 @@
         "description": "Introduzca la nueva contraseña de la cuenta Porsche {email}.",
         "data": {
           "password": "Contraseña"
+        },
+        "data_description": {
+          "password": "La nueva contraseña de su cuenta My Porsche."
         }
       }
     }
@@ -295,6 +306,18 @@
     },
     "pin_code_missing": {
       "message": "Se requiere un código PIN para desbloquear el vehículo. Configure un código predeterminado en la entidad de bloqueo o introdúzcalo en la acción de desbloqueo."
+    },
+    "auth_failed": {
+      "message": "Porsche rechazó el inicio de sesión: {error}"
+    },
+    "update_failed": {
+      "message": "Porsche no respondió a la solicitud: {error}"
+    },
+    "login_throttled": {
+      "message": "Porsche limita los intentos de inicio de sesión; se reintentará en la próxima actualización."
+    },
+    "update_timeout": {
+      "message": "Porsche tardó demasiado en responder."
     }
   },
   "services": {

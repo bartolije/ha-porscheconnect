@@ -1,6 +1,8 @@
 # My Porsche Connect for Home Assistant
 
 [![GitHub Release][releases-shield]][releases]
+[![CI][ci-shield]][ci]
+[![Home Assistant][ha-shield]][hacs-repo]
 [![GitHub Activity][commits-shield]][commits]
 [![License][license-shield]](LICENSE)
 
@@ -13,11 +15,49 @@
 [![Discord][discord-shield]][discord]
 [![Community Forum][forum-shield]][forum]
 
-Connect your Porsche Connect–enabled vehicle to Home Assistant. The integration
-reads vehicle telemetry (state of charge, range, mileage, location, tire
-pressure, doors/lids…) and exposes remote actions (climatisation, lock/unlock,
-flash/honk, direct charging, target SoC) for cars that have an active Porsche
-Connect subscription and are paired to a My Porsche account.
+**Your Porsche in Home Assistant, as a first-class device.** Range, fuel or
+battery, mileage, position, doors, windows, tires and service intervals as
+entities; lock, climatisation, charging, flash and honk as actions. Set up in
+the UI with your My Porsche account, in eight languages, for any car with an
+active Porsche Connect subscription.
+
+```text
+Settings → Devices & services → Add integration → My Porsche Connect
+```
+
+## Why this integration
+
+**It keeps working.** Porsche changes its login and its API without notice.
+A daily job checks that Porsche still accepts the login this integration uses,
+and a weekly one runs the tests on the newest Home Assistant, so a break is
+known before you meet it. When Porsche asks for a captcha or a new password,
+Home Assistant asks you once, in the UI, instead of retrying forever.
+
+**It is careful with your car.** A lock, unlock or climatisation command is
+sent once: if Porsche answers slowly, it is never replayed behind your back.
+Commands go one at a time. The lock shows *unknown*, not *unlocked*, when the
+car does not report its state.
+
+**It is careful with your data.** Diagnostics leave out the password, tokens,
+position and pairing codes, and mask the VIN and email. The unlock PIN is never
+logged, nor anything it could be recovered from.
+
+**It follows the Home Assistant rules.** Built against the
+[integration quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/),
+with each rule and how it is met listed in
+[`quality_scale.yaml`](custom_components/porscheconnect/quality_scale.yaml):
+entities keyed by VIN that survive a rename, translated names, icons and error
+messages, reauthentication and reconfiguration flows, cars added to or removed
+from the account followed without a reload.
+
+**It is tested.** 112 tests and 97 % coverage with a 95 % floor, strict typing,
+Hassfest and HACS validation on every pull request. The library underneath,
+[pyporscheconnectapi-bartolije](https://github.com/bartolije/pyporscheconnectapi),
+has 214 tests of its own on Python 3.12 to 3.15. Release 1.0 was also checked
+on a real 718: login, captcha and every read.
+
+**Switching is safe.** Coming from the original integration, your entities keep
+their entity IDs and history.
 
 > This integration does **not** support *Porsche Car Connect* — that is a
 > separate, older Porsche service with its own backend.
@@ -224,7 +264,7 @@ target temperature and per-seat heating selection.
 | Name          | Type     | Required | Default | Notes                                                              |
 | ------------- | -------- | -------- | ------- | ------------------------------------------------------------------ |
 | `vehicle`     | device   | yes      | —       | The Porsche Connect device the action targets.                     |
-| `temperature` | number   | no       | 20 °C   | Target cabin temperature; the form offers 15–25 °C, 0.5 °C step.   |
+| `temperature` | number   | no       | 20 °C   | Target cabin temperature; 15 to 30 °C, 0.5 °C step.            |
 | `front_left`  | boolean  | no       | false   | Activate front-left seat heating if the car has that zone.         |
 | `front_right` | boolean  | no       | false   | Activate front-right seat heating if the car has that zone.        |
 | `rear_left`   | boolean  | no       | false   | Activate rear-left seat heating if the car has that zone.          |
@@ -443,6 +483,10 @@ logger:
 Reload the logger or restart HA, reproduce the issue, then attach the relevant
 log slice to the GitHub issue.
 
+The log never holds your password, a token or the unlock PIN. It does name your
+VIN and the position of the car: remove them before posting. The diagnostics download (device page → Download
+diagnostics) is already redacted and is often enough.
+
 ## Known limitations
 
 - **Active Porsche Connect subscription is mandatory.** Without it, the API
@@ -492,6 +536,9 @@ release order.
 
 ---
 
+[ci]: https://github.com/bartolije/ha-porscheconnect/actions/workflows/tests.yaml
+[ci-shield]: https://img.shields.io/github/actions/workflow/status/bartolije/ha-porscheconnect/tests.yaml?branch=main&label=CI&style=for-the-badge
+[ha-shield]: https://img.shields.io/badge/Home%20Assistant-2026.11%2B-41BDF5.svg?style=for-the-badge
 [hacs-repo]: https://my.home-assistant.io/redirect/hacs_repository/?owner=bartolije&repository=ha-porscheconnect&category=integration
 [hacs-repo-badge]: https://my.home-assistant.io/badges/hacs_repository.svg
 [ruff]: https://github.com/astral-sh/ruff

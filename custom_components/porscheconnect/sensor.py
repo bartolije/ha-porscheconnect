@@ -29,12 +29,12 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.util import dt as dt_util
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from . import (
-    PorscheBaseEntity,
+from .coordinator import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
     has_measurement,
 )
+from .entity import PorscheBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -134,6 +134,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
         # want both views.
         key="charging_rate",
         translation_key="charging_rate",
+        state_class=SensorStateClass.MEASUREMENT,
         measurement_node="CHARGING_RATE",
         measurement_leaf="chargingRate-kph",
         device_class=SensorDeviceClass.SPEED,
@@ -152,6 +153,7 @@ SENSOR_TYPES: list[PorscheSensorEntityDescription] = [
     PorscheSensorEntityDescription(
         key="charging_power",
         translation_key="charging_power",
+        state_class=SensorStateClass.MEASUREMENT,
         measurement_node="CHARGING_RATE",
         measurement_leaf="chargingPowerkW",
         device_class=SensorDeviceClass.POWER,

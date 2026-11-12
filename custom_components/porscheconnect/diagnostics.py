@@ -14,7 +14,7 @@ from homeassistant.components.diagnostics import async_redact_data
 from homeassistant.const import CONF_ACCESS_TOKEN, CONF_EMAIL, CONF_PASSWORD
 from homeassistant.core import HomeAssistant
 
-from . import PorscheConnectConfigEntry
+from .coordinator import PorscheConnectConfigEntry
 
 # Top-level entry-data keys we hand to async_redact_data. Anything stored
 # under one of these is replaced with ``**REDACTED**``.

@@ -543,3 +543,28 @@ def test_every_flow_step_is_translated() -> None:
     for strings in (component / "strings.json", *component.glob("translations/*.json")):
         translated = json.loads(strings.read_text())["config"]["step"]
         assert steps <= set(translated), strings.name
+
+
+def test_translations_are_complete_and_used_keys_exist() -> None:
+    """Every language has the keys of strings.json, and the code only uses keys that exist."""
+    import json
+    import re
+    from pathlib import Path
+
+    component = Path(__file__).parent.parent / "custom_components/porscheconnect"
+
+    def keys(node: object, prefix: str = "") -> set[str]:
+        if not isinstance(node, dict):
+            return {prefix}
+        return {k for name, child in node.items() for k in keys(child, f"{prefix}.{name}")}
+
+    strings = json.loads((component / "strings.json").read_text())
+    for translation in component.glob("translations/*.json"):
+        assert keys(json.loads(translation.read_text())) == keys(strings), translation.name
+
+    source = "".join(p.read_text() for p in component.glob("*.py"))
+    used = set(re.findall(r'translation_key="(\w+)"', source))
+    known = set(strings["exceptions"]) | {
+        key for platform in strings["entity"].values() for key in platform
+    } | {"location"}
+    assert used <= known, used - known

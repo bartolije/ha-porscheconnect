@@ -4,7 +4,8 @@
       "already_configured": "Enheten är redan konfigurerad",
       "reauth_successful": "Återautentiseringen lyckades",
       "reconfigure_successful": "Omkonfigureringen lyckades",
-      "unique_id_mismatch": "E-postadressen matchar inte det konfigurerade Porsche Connect-kontot"
+      "unique_id_mismatch": "E-postadressen matchar inte det konfigurerade Porsche Connect-kontot",
+      "already_in_progress": "Konfigurationen pågår redan"
     },
     "error": {
       "cannot_connect": "Det gick inte att ansluta",
@@ -16,6 +17,10 @@
         "data": {
           "password": "Lösenord",
           "email": "E-postadress"
+        },
+        "data_description": {
+          "email": "E-postadressen till ditt My Porsche-konto.",
+          "password": "Lösenordet till ditt My Porsche-konto."
         }
       },
       "captcha": {
@@ -23,6 +28,9 @@
         "description": "{captcha_img}",
         "data": {
           "captcha_code": "Captcha-kod"
+        },
+        "data_description": {
+          "captcha_code": "Tecknen som visas i bilden ovan."
         }
       },
       "change_password": {
@@ -30,6 +38,9 @@
         "description": "Ange det nya lösenordet för Porsche-kontot {email}.",
         "data": {
           "password": "Lösenord"
+        },
+        "data_description": {
+          "password": "Det nya lösenordet till ditt My Porsche-konto."
         }
       }
     }
@@ -295,6 +306,18 @@
     },
     "pin_code_missing": {
       "message": "En PIN-kod krävs för att låsa upp fordonet. Ange en standardkod på låsenheten eller skicka den till upplåsningsåtgärden."
+    },
+    "auth_failed": {
+      "message": "Porsche nekade inloggningen: {error}"
+    },
+    "update_failed": {
+      "message": "Porsche svarade inte på begäran: {error}"
+    },
+    "login_throttled": {
+      "message": "Porsche begränsar inloggningsförsöken; nytt försök vid nästa uppdatering."
+    },
+    "update_timeout": {
+      "message": "Porsche tog för lång tid på sig att svara."
     }
   },
   "services": {

@@ -4,7 +4,8 @@
       "already_configured": "Device is already configured",
       "reauth_successful": "Re-authentication was successful",
       "reconfigure_successful": "Reconfiguration was successful",
-      "unique_id_mismatch": "The email address does not match the configured Porsche Connect account"
+      "unique_id_mismatch": "The email address does not match the configured Porsche Connect account",
+      "already_in_progress": "Configuration flow is already in progress"
     },
     "error": {
       "cannot_connect": "Failed to connect",
@@ -16,6 +17,10 @@
         "data": {
           "password": "Password",
           "email": "Email"
+        },
+        "data_description": {
+          "email": "The email of your My Porsche account.",
+          "password": "The password of your My Porsche account."
         }
       },
       "captcha": {
@@ -23,6 +28,9 @@
         "description": "{captcha_img}",
         "data": {
           "captcha_code": "Captcha code"
+        },
+        "data_description": {
+          "captcha_code": "The characters shown in the picture above."
         }
       },
       "change_password": {
@@ -30,6 +38,9 @@
         "description": "Enter the new password of the Porsche account {email}.",
         "data": {
           "password": "Password"
+        },
+        "data_description": {
+          "password": "The new password of your My Porsche account."
         }
       }
     }
@@ -295,6 +306,18 @@
     },
     "pin_code_missing": {
       "message": "A PIN code is required to unlock the vehicle. Configure a default code on the lock entity or pass it to the unlock action."
+    },
+    "auth_failed": {
+      "message": "Porsche refused the login: {error}"
+    },
+    "update_failed": {
+      "message": "Porsche did not answer the request: {error}"
+    },
+    "login_throttled": {
+      "message": "Porsche is limiting login attempts; trying again at the next refresh."
+    },
+    "update_timeout": {
+      "message": "Porsche took too long to answer."
     }
   },
   "services": {

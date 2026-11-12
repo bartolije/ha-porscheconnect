@@ -120,13 +120,13 @@ async def test_coordinator_persists_token_only_when_changed(
         coordinator = mock_config_entry.runtime_data
 
         # Token unchanged since setup → no rewrite.
-        with patch("custom_components.porscheconnect._async_save_token") as save:
+        with patch("custom_components.porscheconnect.coordinator.async_save_token") as save:
             await coordinator._async_update_data()
             save.assert_not_called()
 
         # Token rotated → persisted exactly once.
         account.token = {"access_token": "rotated", "expires_in": 3600}
-        with patch("custom_components.porscheconnect._async_save_token") as save:
+        with patch("custom_components.porscheconnect.coordinator.async_save_token") as save:
             await coordinator._async_update_data()
             save.assert_called_once()
 
@@ -303,7 +303,7 @@ async def test_hanging_api_times_out_instead_of_blocking(
 
     mock_vehicle.get_stored_overview = AsyncMock(side_effect=_hang)
     mock_config_entry.add_to_hass(hass)
-    with patch("custom_components.porscheconnect._UPDATE_TIMEOUT", 0.01):
+    with patch("custom_components.porscheconnect.coordinator._UPDATE_TIMEOUT", 0.01):
         assert not await hass.config_entries.async_setup(mock_config_entry.entry_id)
         await hass.async_block_till_done()
 
@@ -355,3 +355,47 @@ async def test_throttled_login_is_retried_not_reauthenticated(
 
     with pytest.raises(UpdateFailed):
         await mock_config_entry.runtime_data._async_update_data()
+
+
+async def test_update_errors_are_translated(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    """Errors shown to the user come from the translation files."""
+    from homeassistant.exceptions import ConfigEntryAuthFailed
+
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = mock_config_entry.runtime_data
+
+    mock_vehicle.get_stored_overview = AsyncMock(
+        side_effect=PorscheExceptionError("api down")
+    )
+    with pytest.raises(UpdateFailed) as failed:
+        await coordinator._async_update_data()
+    assert failed.value.translation_key == "update_failed"
+    assert failed.value.translation_placeholders == {"error": "api down"}
+
+    mock_vehicle.get_stored_overview = AsyncMock(
+        side_effect=PorscheWrongCredentialsError("refused")
+    )
+    with pytest.raises(ConfigEntryAuthFailed) as refused:
+        await coordinator._async_update_data()
+    assert refused.value.translation_key == "auth_failed"
+
+
+async def test_device_of_an_unloaded_entry_can_be_removed(
+    hass: HomeAssistant, mock_config_entry: MockConfigEntry
+) -> None:
+    """Without a loaded entry there is no vehicle list to check against."""
+    from custom_components.porscheconnect import async_remove_config_entry_device
+
+    mock_config_entry.add_to_hass(hass)
+
+    assert await async_remove_config_entry_device(
+        hass, mock_config_entry, MagicMock()
+    )

@@ -11,11 +11,11 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
-from . import (
-    PorscheBaseEntity,
+from .coordinator import (
     PorscheConnectConfigEntry,
     PorscheConnectDataUpdateCoordinator,
 )
+from .entity import PorscheBaseEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -68,7 +68,7 @@ class PorscheDeviceTracker(PorscheBaseEntity, TrackerEntity):
         self._attr_unique_id = self._vin
         # The device is already named after the car: a name here would double it.
         self._attr_name = None
-        self._attr_icon = "mdi:crosshairs-gps"
+        self._attr_translation_key = "location"
 
     @property
     def extra_state_attributes(self) -> dict[str, Any]:

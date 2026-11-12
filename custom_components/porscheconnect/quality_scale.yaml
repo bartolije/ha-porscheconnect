@@ -4,18 +4,24 @@ rules:
   appropriate-polling:
     status: done
     comment: |
-      Polls every DEFAULT_SCAN_INTERVAL (1920 s) via DataUpdateCoordinator;
-      the interval is also overridable via CONF_SCAN_INTERVAL.
+      Polls every DEFAULT_SCAN_INTERVAL (1920 s) via DataUpdateCoordinator.
+      There is no setting for it: Porsche rate-limits the API.
   brands:
     status: exempt
     comment: |
       Brand is "Porsche" — added to home-assistant/brands separately, not
       part of this repository.
-  common-modules: done
+  common-modules:
+    status: done
+    comment: The coordinator is in coordinator.py, the base entity in entity.py.
   config-flow-test-coverage:
     status: done
     comment: Tests cover happy path, wrong creds, already_configured, captcha, reauth.
-  config-flow: done
+  config-flow:
+    status: done
+    comment: |
+      UI only. Every field of every step has a label and a data_description,
+      in all eight languages.
   dependency-transparency: done
   docs-actions:
     status: done
@@ -83,8 +89,10 @@ rules:
   parallel-updates:
     status: done
     comment: |
-      Every platform declares ``PARALLEL_UPDATES = 0`` since entities
-      read-only from the shared coordinator.
+      Read-only platforms (sensor, binary_sensor, device_tracker, image)
+      declare ``PARALLEL_UPDATES = 0``: they read the shared coordinator.
+      Platforms that send commands (lock, switch, button, number, climate)
+      declare ``PARALLEL_UPDATES = 1``: one command at a time.
   reauthentication-flow:
     status: done
     comment: |
@@ -171,7 +179,9 @@ rules:
   exception-translations:
     status: done
     comment: |
-      All HomeAssistantError / ServiceValidationError raised by the
+      The coordinator's UpdateFailed and ConfigEntryAuthFailed (auth_failed,
+      update_failed, login_throttled, update_timeout) and all
+      HomeAssistantError / ServiceValidationError raised by the
       integration carry ``translation_domain`` + ``translation_key`` and
       have matching ``exceptions.*`` entries in strings.json and
       translations/en.json (climatisation_not_supported,

@@ -4,7 +4,8 @@
       "already_configured": "Il dispositivo è già configurato",
       "reauth_successful": "La nuova autenticazione è andata a buon fine",
       "reconfigure_successful": "La riconfigurazione è andata a buon fine",
-      "unique_id_mismatch": "L'indirizzo email non corrisponde all'account Porsche Connect configurato"
+      "unique_id_mismatch": "L'indirizzo email non corrisponde all'account Porsche Connect configurato",
+      "already_in_progress": "La configurazione è già in corso"
     },
     "error": {
       "cannot_connect": "Connessione non riuscita",
@@ -16,6 +17,10 @@
         "data": {
           "password": "Password",
           "email": "Email"
+        },
+        "data_description": {
+          "email": "L'email del tuo account My Porsche.",
+          "password": "La password del tuo account My Porsche."
         }
       },
       "captcha": {
@@ -23,6 +28,9 @@
         "description": "{captcha_img}",
         "data": {
           "captcha_code": "Codice captcha"
+        },
+        "data_description": {
+          "captcha_code": "I caratteri mostrati nell'immagine qui sopra."
         }
       },
       "change_password": {
@@ -30,6 +38,9 @@
         "description": "Inserisci la nuova password dell'account Porsche {email}.",
         "data": {
           "password": "Password"
+        },
+        "data_description": {
+          "password": "La nuova password del tuo account My Porsche."
         }
       }
     }
@@ -295,6 +306,18 @@
     },
     "pin_code_missing": {
       "message": "È necessario un codice PIN per sbloccare il veicolo. Configura un codice predefinito sull'entità di blocco oppure passalo all'azione di sblocco."
+    },
+    "auth_failed": {
+      "message": "Porsche ha rifiutato l'accesso: {error}"
+    },
+    "update_failed": {
+      "message": "Porsche non ha risposto alla richiesta: {error}"
+    },
+    "login_throttled": {
+      "message": "Porsche limita i tentativi di accesso; nuovo tentativo al prossimo aggiornamento."
+    },
+    "update_timeout": {
+      "message": "Porsche ha impiegato troppo tempo a rispondere."
     }
   },
   "services": {
