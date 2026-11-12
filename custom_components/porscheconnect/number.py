@@ -16,6 +16,7 @@ from homeassistant.components.number import (
 from homeassistant.core import HomeAssistant, callback
 from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
+from pyporscheconnectapi.exceptions import PorscheExceptionError
 from pyporscheconnectapi.vehicle import PorscheVehicle
 
 from . import (
@@ -119,7 +120,7 @@ class PorscheNumber(PorscheBaseEntity, NumberEntity):
         )
         try:
             await self.entity_description.remote_service(self.vehicle, value)
-        except Exception as ex:
+        except PorscheExceptionError as ex:
             raise HomeAssistantError(
                 translation_domain=DOMAIN,
                 translation_key="remote_service_failed",

@@ -103,3 +103,15 @@ async def test_set_native_value_coerces_float_to_int():
 
     # int(70.5) == 70 — would fail if the production int() coercion were dropped.
     vehicle.remote_services.set_target_soc.assert_awaited_once_with(target_soc=70)
+
+
+@pytest.mark.asyncio
+async def test_set_value_does_not_hide_a_programming_error():
+    """Only API errors become a failed remote service; a bug stays a bug."""
+    coord = MagicMock()
+    vehicle = _vehicle()
+    vehicle.remote_services.set_target_soc = AsyncMock(side_effect=TypeError("bug"))
+    number = _make(coord, vehicle, "target_soc")
+
+    with pytest.raises(TypeError):
+        await number.async_set_native_value(80)

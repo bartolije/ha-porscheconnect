@@ -95,7 +95,8 @@ rules:
     status: done
     comment: |
       Coordinator, setup/unload, auth/reauth, config flow, unique-id
-      migration, and per-platform action tests (60+ tests).
+      migration, and per-platform action tests. CI fails under 95 % line
+      coverage (pyproject.toml).
 
   # Gold (declared here so review tooling sees explicit positions)
   devices: done
@@ -145,9 +146,9 @@ rules:
   dynamic-devices:
     status: done
     comment: |
-      Every platform registers a coordinator listener that creates
-      entities for VINs appearing after the initial refresh — newly
-      paired vehicles show up without restarting Home Assistant.
+      The coordinator reads the account's vehicle list on every refresh and
+      every platform registers a listener that creates entities for new
+      VINs — newly paired vehicles show up without a reload.
   entity-category:
     status: done
     comment: |
@@ -187,8 +188,10 @@ rules:
   stale-devices:
     status: done
     comment: |
-      ``async_remove_config_entry_device`` permits removal whenever the
-      device's VINs are no longer present on the linked account.
+      A vehicle that left the account turns unavailable on the next refresh
+      and ``async_remove_config_entry_device`` then permits its removal. It
+      is not deleted automatically: an empty list from the API would
+      otherwise wipe the user's entity settings.
 
   # Platinum
   async-dependency: done
