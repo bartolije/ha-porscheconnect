@@ -186,20 +186,28 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
             if missed[vin] < _STALE_AFTER_REFRESHES:
                 continue
             del missed[vin]
-            # A car that comes back later is set up again from scratch.
-            self._seen_vehicles.pop(vin, None)
-            ir.async_delete_issue(self.hass, DOMAIN, f"connect_inactive_{vin}")
-            device_registry.async_update_device(
-                device.id, remove_config_entry_id=self.config_entry.entry_id
-            )
+            self.async_forget_vehicle(vin)
+            device_registry.async_remove_device(device.id)
         self._missed_refreshes = missed
+
+    @callback
+    def async_forget_vehicle(self, vin: str) -> None:
+        """Forget a car whose device is removed; back later, it is set up again."""
+        self._seen_vehicles.pop(vin, None)
+        ir.async_delete_issue(self.hass, DOMAIN, f"connect_inactive_{vin}")
 
     @callback
     def _async_update_contract_issue(self, vehicle: PorscheVehicle) -> None:
         """Tell the user when a car has no active Porsche Connect contract."""
         issue_id = f"connect_inactive_{vehicle.vin}"
         if vehicle.has_porsche_connect:
-            ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+            if ir.async_get(self.hass).async_get_issue(DOMAIN, issue_id):
+                ir.async_delete_issue(self.hass, DOMAIN, issue_id)
+                # Entities are created from what the car reports at setup: set
+                # it up again now that the contract is back.
+                self.hass.config_entries.async_schedule_reload(
+                    self.config_entry.entry_id
+                )
             return
         ir.async_create_issue(
             self.hass,

@@ -10,6 +10,7 @@ from homeassistant.core import HomeAssistant, callback
 from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers import device_registry as dr
 from homeassistant.helpers import entity_registry as er
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.httpx_client import create_async_httpx_client
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.util.hass_dict import HassKey
@@ -209,8 +210,13 @@ async def async_unload_entry(
 async def async_remove_entry(
     hass: HomeAssistant, entry: PorscheConnectConfigEntry
 ) -> None:
-    """Forget the HTTP client of a deleted entry."""
+    """Forget the HTTP client and the repair issues of a deleted entry."""
     hass.data.get(_ENTRY_CLIENTS, {}).pop(entry.entry_id, None)
+    # Issues are named after the car, not the entry: another account's issue
+    # removed here is raised again at its next refresh.
+    for domain, issue_id in list(ir.async_get(hass).issues):
+        if domain == DOMAIN:
+            ir.async_delete_issue(hass, DOMAIN, issue_id)
 
 
 async def async_remove_config_entry_device(
@@ -237,4 +243,8 @@ async def async_remove_config_entry_device(
     }
     # If none of the device's VINs are still active on the account, the user
     # is free to remove it.
-    return device_vins.isdisjoint(known_vins)
+    if not device_vins.isdisjoint(known_vins):
+        return False
+    for vin in device_vins:
+        coordinator.async_forget_vehicle(vin)
+    return True

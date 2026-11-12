@@ -19,8 +19,8 @@ rules:
     status: done
     comment: |
       The porscheconnect domain is in home-assistant/brands
-      (custom_integrations/porscheconnect); brand/ in this folder carries the
-      same icon for Home Assistant's local brand images.
+      (custom_integrations/porscheconnect); brand/ in this folder holds this
+      integration's own icon for Home Assistant's local brand images.
   common-modules:
     status: done
     comment: |
@@ -29,8 +29,9 @@ rules:
     status: done
     comment: |
       config_flow.py is covered at 100 % (lines and branches), enforced in CI.
-      User, captcha, reauth and reconfigure flows are each tested through an
-      error and then to their end; duplicates and another account are refused.
+      User, captcha, reauth and reconfigure flows are each tested through both
+      errors the form can show (invalid_auth, cannot_connect) and then to their
+      end; duplicates and another account are refused.
   config-flow:
     status: done
     comment: |
@@ -131,7 +132,7 @@ rules:
       Read-only platforms (sensor, binary_sensor, device_tracker, image)
       declare PARALLEL_UPDATES = 0: they read the shared coordinator.
       Platforms that send commands (lock, switch, button, number, climate)
-      declare PARALLEL_UPDATES = 1: one command at a time.
+      declare PARALLEL_UPDATES = 1: one command at a time per platform.
   reauthentication-flow:
     status: done
     comment: |
@@ -207,8 +208,9 @@ rules:
   entity-device-class:
     status: done
     comment: |
-      Every entity with a matching device class has one; the rest (lock state
-      texts, charging target, service counters in days) have none that fits.
+      Every entity with a matching device class has one. Those without
+      (charging target, fuel level and reserve, trips of the month, fuel
+      consumption, account flags, buttons and switches) have none that fits.
   entity-disabled-by-default:
     status: done
     comment: |
@@ -229,7 +231,8 @@ rules:
     status: done
     comment: |
       A car without an active Porsche Connect contract raises a repair issue
-      that says how to renew it; the issue goes away when the contract is back.
+      that says how to renew it. When the contract is back, the issue goes
+      away and the entry is reloaded so that the entities come back.
   stale-devices:
     status: done
     comment: |
