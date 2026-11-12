@@ -204,4 +204,4 @@ rules:
     status: done
     comment: |
       mypy --strict runs in CI (configuration in pyproject.toml). The library
-      ships no type information, so it is treated as untyped.
+      is typed (py.typed) and checked with the integration.

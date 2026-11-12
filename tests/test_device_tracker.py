@@ -41,7 +41,8 @@ async def test_tracker_reports_position_heading_and_custom_name(
 ) -> None:
     """The tracker carries the car's coordinates, heading and custom name."""
     mock_vehicle.location = (48.8584, 2.2945, 90)
-    mock_vehicle.data["customName"] = "Daily"
+    # What the library does with a custom name.
+    mock_vehicle.data["customName"] = mock_vehicle.data["name"] = "Daily"
     mock_config_entry.add_to_hass(hass)
     assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
     await hass.async_block_till_done()
@@ -53,4 +54,6 @@ async def test_tracker_reports_position_heading_and_custom_name(
     assert state.attributes["latitude"] == 48.8584
     assert state.attributes["longitude"] == 2.2945
     assert state.attributes["direction"] == 90.0
-    assert state.attributes["friendly_name"].endswith("Daily")
+    # The device carries the custom name; the tracker must not repeat it.
+    assert state.attributes["friendly_name"] == "Daily"
+    assert entity_id == "device_tracker.daily"

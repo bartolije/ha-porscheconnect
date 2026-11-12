@@ -134,7 +134,11 @@ class PorscheConnectConfigFlow(ConfigFlow, domain=DOMAIN):
     def _abort_if_account_mismatch(self) -> None:
         """Abort if reauth/reconfigure targets a different account."""
         expected_unique_id = self._get_expected_unique_id()
-        if expected_unique_id is None or self.unique_id == expected_unique_id:
+        # Entries created by the original integration keep the email as typed.
+        if (
+            expected_unique_id is None
+            or self.unique_id == expected_unique_id.strip().lower()
+        ):
             return
         self._abort_if_unique_id_mismatch()
 

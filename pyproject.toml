@@ -26,9 +26,3 @@ python_version = "3.14"
 strict = true
 warn_unreachable = true
 files = ["custom_components/porscheconnect"]
-
-[[tool.mypy.overrides]]
-# The library ships no type information (no py.typed marker).
-module = ["pyporscheconnectapi", "pyporscheconnectapi.*"]
-ignore_missing_imports = true
-follow_imports = "skip"

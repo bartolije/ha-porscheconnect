@@ -27,7 +27,7 @@ PARALLEL_UPDATES = 0
 class PorscheSwitchEntityDescription(SwitchEntityDescription):
     """Class describing Porsche Connect switch entities."""
 
-    value_fn: Callable[[PorscheVehicle], bool]
+    value_fn: Callable[[PorscheVehicle], bool | None]
     remote_service_on: Callable[[PorscheVehicle], Coroutine[Any, Any, Any]]
     remote_service_off: Callable[[PorscheVehicle], Coroutine[Any, Any, Any]]
     is_available: Callable[[PorscheVehicle], bool] = lambda _: False
@@ -101,7 +101,7 @@ class PorscheSwitch(PorscheBaseEntity, SwitchEntity):
         self._attr_unique_id = f"{self._vin}-{description.key}"
 
     @property
-    def is_on(self) -> bool:
+    def is_on(self) -> bool | None:
         """Return the entity value to represent the entity state."""
         return self.entity_description.value_fn(self.vehicle)
 

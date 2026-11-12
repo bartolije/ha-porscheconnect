@@ -24,6 +24,13 @@
         "data": {
           "captcha_code": "Code captcha"
         }
+      },
+      "change_password": {
+        "title": "Changer le mot de passe",
+        "description": "Saisissez le nouveau mot de passe du compte Porsche {email}.",
+        "data": {
+          "password": "Mot de passe"
+        }
       }
     }
   },

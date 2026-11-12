@@ -13,9 +13,9 @@ Github is used to host code, to track issues and feature requests, as well as ac
 
 Pull requests are the best way to propose changes to the codebase.
 
-1. Fork the repo and create your branch from `master`.
+1. Fork the repo and create your branch from `main`.
 2. If you've changed something, update the documentation.
-3. Make sure your code lints (using black).
+3. Make sure your code lints (`ruff check` and `ruff format`).
 4. Test you contribution.
 5. Issue that pull request!
 
@@ -110,7 +110,7 @@ pinned to an exact version in `manifest.json` and `requirements_test.txt`.
 When a change needs a new library version, release in this order:
 
 1. **Library first.** Merge the change in the library repository, bump the version
-   in its `setup.py` and publish a GitHub release: the release workflow uploads it
+   in its `pyproject.toml` and publish a GitHub release: the release workflow uploads it
    to PyPI.
 2. **Then the integration.** Open the pull request that raises the pinned version.
    Its CI installs the library from PyPI, so the tests and mypy jobs fail with

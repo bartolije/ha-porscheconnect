@@ -33,6 +33,7 @@ from pyporscheconnectapi.connection import Connection
 from pyporscheconnectapi.exceptions import (
     PorscheCaptchaRequiredError,
     PorscheExceptionError,
+    PorscheLoginThrottledError,
     PorscheWrongCredentialsError,
 )
 from pyporscheconnectapi.vehicle import PorscheVehicle
@@ -103,7 +104,7 @@ def has_measurement(key: str) -> Callable[[PorscheVehicle], bool]:
 def _async_save_token(
     hass: HomeAssistant,
     config_entry: PorscheConnectConfigEntry,
-    access_token: dict[str, Any],
+    access_token: dict[str, Any] | None,
 ) -> None:
     hass.config_entries.async_update_entry(
         config_entry,
@@ -354,6 +355,10 @@ class PorscheConnectDataUpdateCoordinator(DataUpdateCoordinator):
                     if self._picture_retry_due(vehicle):
                         await self._async_fetch_pictures(vehicle)
 
+        except PorscheLoginThrottledError as exc:
+            # Too many logins: the password is fine, try again at the next refresh.
+            msg = f"Porsche is throttling logins: {exc}"
+            raise UpdateFailed(msg) from exc
         except PorscheWrongCredentialsError as exc:
             msg = f"{_AUTH_FAILED_MSG}: {exc}"
             raise ConfigEntryAuthFailed(msg) from exc

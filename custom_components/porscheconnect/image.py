@@ -25,7 +25,7 @@ PARALLEL_UPDATES = 0
 class PorscheImageEntityDescription(ImageEntityDescription):
     """Describes a Porsche image entity."""
 
-    view: str | None = None
+    view: str = ""
 
 
 # Only the side view is enabled by default — it makes the best "hero" image
