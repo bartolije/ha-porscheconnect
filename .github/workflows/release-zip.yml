@@ -17,6 +17,8 @@ permissions:
 jobs:
   zip:
     runs-on: ubuntu-latest
+    # Waits for the maintainer's approval: HACS installs from this zip.
+    environment: release
     env:
       TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
