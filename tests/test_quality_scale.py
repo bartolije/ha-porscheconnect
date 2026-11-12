@@ -96,7 +96,16 @@ async def test_user_flow_recovers_from_an_error(
     assert result["data"][CONF_EMAIL] == TEST_EMAIL
 
 
-async def test_captcha_flow_recovers_from_a_refused_code(hass: HomeAssistant) -> None:
+@pytest.mark.parametrize(
+    ("failure", "error"),
+    [
+        (PorscheWrongCredentialsError("wrong code"), "invalid_auth"),
+        (PorscheExceptionError("down"), "cannot_connect"),
+    ],
+)
+async def test_captcha_flow_recovers_from_a_refused_code(
+    hass: HomeAssistant, failure: Exception, error: str
+) -> None:
     result = await hass.config_entries.flow.async_init(
         DOMAIN, context={"source": config_entries.SOURCE_USER}
     )
@@ -105,7 +114,7 @@ async def test_captcha_flow_recovers_from_a_refused_code(hass: HomeAssistant) ->
             CONNECTION,
             side_effect=[
                 _captcha(),
-                _login(PorscheWrongCredentialsError("wrong code")),
+                _login(failure),
                 # Not a data URI: shown as it is.
                 _captcha("https://example.invalid/captcha.png"),
                 _login(),
@@ -125,7 +134,7 @@ async def test_captcha_flow_recovers_from_a_refused_code(hass: HomeAssistant) ->
             result["flow_id"], user_input={CONF_CAPTCHA_CODE: "WRONG"}
         )
         assert result["step_id"] == "user"
-        assert result["errors"] == {"base": "invalid_auth"}
+        assert result["errors"] == {"base": error}
 
         result = await hass.config_entries.flow.async_configure(
             result["flow_id"], user_input=dict(CREDENTIALS)
@@ -142,6 +151,13 @@ async def test_captcha_flow_recovers_from_a_refused_code(hass: HomeAssistant) ->
 
 
 @pytest.mark.parametrize(
+    ("failure", "error"),
+    [
+        (PorscheWrongCredentialsError("nope"), "invalid_auth"),
+        (PorscheExceptionError("down"), "cannot_connect"),
+    ],
+)
+@pytest.mark.parametrize(
     ("source", "reason"),
     [
         (config_entries.SOURCE_REAUTH, "reauth_successful"),
@@ -149,7 +165,7 @@ async def test_captcha_flow_recovers_from_a_refused_code(hass: HomeAssistant) ->
     ],
 )
 async def test_reauth_and_reconfigure_recover_from_an_error(
-    hass: HomeAssistant, source: str, reason: str
+    hass: HomeAssistant, source: str, reason: str, failure: Exception, error: str
 ) -> None:
     entry = _existing_entry(hass)
     result = await hass.config_entries.flow.async_init(
@@ -165,7 +181,7 @@ async def test_reauth_and_reconfigure_recover_from_an_error(
     with (
         patch(
             CONNECTION,
-            side_effect=[_login(PorscheWrongCredentialsError("nope")), _login()],
+            side_effect=[_login(failure), _login()],
         ),
         patch("custom_components.porscheconnect.async_setup_entry", return_value=True),
     ):
@@ -173,7 +189,7 @@ async def test_reauth_and_reconfigure_recover_from_an_error(
             result["flow_id"], user_input=first
         )
         assert result["type"] == FlowResultType.FORM
-        assert result["errors"] == {"base": "invalid_auth"}
+        assert result["errors"] == {"base": error}
         assert entry.data[CONF_PASSWORD] == "old-password"
 
         result = await hass.config_entries.flow.async_configure(
@@ -260,8 +276,20 @@ async def test_inactive_connect_contract_raises_a_repair_issue(
     assert issue.translation_key == "connect_inactive"
     assert issue.translation_placeholders == {"vehicle": "Taycan"}
 
+    # Contract back: the issue goes away and the entry is set up again, since
+    # entities are created from what the car reports at setup.
     mock_vehicle.has_porsche_connect = True
+    with patch.object(hass.config_entries, "async_schedule_reload") as reload:
+        await mock_config_entry.runtime_data.async_refresh()
+        await hass.async_block_till_done()
+    assert issues.async_get_issue(DOMAIN, issue_id) is None
+    reload.assert_called_once_with(mock_config_entry.entry_id)
+
+    # An issue never outlives its entry.
+    mock_vehicle.has_porsche_connect = False
     await mock_config_entry.runtime_data.async_refresh()
+    assert issues.async_get_issue(DOMAIN, issue_id)
+    assert await hass.config_entries.async_remove(mock_config_entry.entry_id)
     await hass.async_block_till_done()
     assert issues.async_get_issue(DOMAIN, issue_id) is None
 
@@ -421,3 +449,41 @@ async def test_set_temperature_without_a_temperature_sends_nothing() -> None:
     await climate.async_set_temperature(hvac_mode="heat")
 
     vehicle.remote_services.climatise_on.assert_not_awaited()
+
+
+async def test_car_back_after_its_device_was_removed_by_hand_is_set_up_again(
+    hass: HomeAssistant,
+    mock_config_entry: MockConfigEntry,
+    mock_vehicle,
+    mock_account,
+    mock_connection_cls,
+    mock_account_cls,
+) -> None:
+    from custom_components.porscheconnect import async_remove_config_entry_device
+
+    mock_config_entry.add_to_hass(hass)
+    assert await hass.config_entries.async_setup(mock_config_entry.entry_id)
+    await hass.async_block_till_done()
+    coordinator = mock_config_entry.runtime_data
+    devices = dr.async_get(hass)
+    identifier = (DOMAIN, mock_vehicle.vin)
+
+    mock_account.get_vehicles.return_value = []
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+    device = devices.async_get_device_by_identifier(
+        identifier, mock_config_entry.entry_id
+    )
+    assert await async_remove_config_entry_device(hass, mock_config_entry, device)
+    devices.async_remove_device(device.id)
+
+    mock_account.get_vehicles.return_value = [_make_vehicle()]
+    await coordinator.async_refresh()
+    await hass.async_block_till_done()
+
+    assert devices.async_get_device_by_identifier(
+        identifier, mock_config_entry.entry_id
+    )
+    assert er.async_get(hass).async_get_entity_id(
+        "sensor", DOMAIN, f"{mock_vehicle.vin}-mileage"
+    )

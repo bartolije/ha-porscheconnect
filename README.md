@@ -36,8 +36,7 @@ nothing to configure by hand. Available in seven languages.
 ## Built to be trusted with your car
 
 - **Careful with your car.** A lock, unlock or climatisation command is sent
-  once, and one at a time. If Porsche answers slowly, nothing is replayed
-  behind your back.
+  once. If Porsche answers slowly, nothing is replayed behind your back.
 - **Careful with your data.** Your password, your PIN and the position of your
   car never appear in logs or in the diagnostics you may share.
 - **It keeps working.** Porsche changes its login without notice. Automatic
@@ -46,7 +45,7 @@ nothing to configure by hand. Available in seven languages.
 - **Built to Home Assistant's highest standards.** The integration follows the
   official [quality scale](https://developers.home-assistant.io/docs/core/integration-quality-scale/)
   rule by rule ([how each rule is met](custom_components/porscheconnect/quality_scale.yaml)),
-  with 126 automated tests, and it is checked on a real car.
+  with more than 120 automated tests, and it is checked on a real car.
 
 ## Supported cars
 
