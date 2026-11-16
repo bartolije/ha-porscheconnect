@@ -1,8 +1,7 @@
 name: Weekly
 
 # Early warning between releases: the regular CI pins Home Assistant, this run
-# takes the newest one, it checks that Porsche still accepts the library, and it
-# reports new releases of the upstream projects.
+# takes the newest one, and it checks that Porsche still accepts the library.
 # The Porsche check also runs on the other days: a refused login breaks every
 # new setup, so a week is too long to find out.
 on:
@@ -94,27 +93,3 @@ jobs:
             gh issue create --title "Porsche no longer accepts the library" --label porsche-api \
               --body "$(printf 'The weekly check failed:\n\n```\n%s\n```\n\nLogins will start failing. Update the app version or the login client in `pyporscheconnectapi/const.py` to what the current My Porsche app uses.' "$(cat result.txt)")"
           fi
-
-  upstream-releases:
-    name: Upstream releases
-    if: github.event.schedule != '30 5 * * 0,2-6'
-    runs-on: ubuntu-latest
-    steps:
-      - name: Open an issue for each new upstream release
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-        run: |
-          since=$(date -u -d '8 days ago' +%Y-%m-%dT%H:%M:%SZ)
-          for upstream in CJNE/ha-porscheconnect CJNE/pyporscheconnectapi; do
-            gh api "repos/$upstream/releases?per_page=10" \
-              --jq ".[] | select(.draft | not) | select(.published_at > \"$since\") | [.tag_name, .html_url] | @tsv" |
-            while IFS=$'\t' read -r tag url; do
-              title="Upstream release: $upstream $tag"
-              existing=$(gh issue list --state all --label upstream --search "\"$title\" in:title" --json number --jq 'length')
-              if [ "$existing" = "0" ]; then
-                gh issue create --title "$title" --label upstream \
-                  --body "$upstream published $tag: $url. Check whether it carries Porsche API changes to port here."
-              fi
-            done
-          done
